@@ -19,8 +19,7 @@ public class TileManager : GenericSingleton<TileManager>
 
     public void Register(Tile tile)
     {
-        Vector2Int coord = WorldToCoord(tile.transform.position);
-        tile.SetCoord(coord);
+        Vector2Int coord = tile.Coord;
 
         if (tiles.TryGetValue(coord, out Tile existing) && existing != tile)
             Debug.LogWarning($"[TileManager] {tile.name} e {existing.name} stessa coord {coord}: sovrascrivo");

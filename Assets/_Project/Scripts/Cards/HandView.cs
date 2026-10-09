@@ -12,6 +12,12 @@ public class HandView : MonoBehaviour
     [SerializeField] float drawDuration = 0.4f;
     [SerializeField] float discardDuration = 0.35f;
     [SerializeField] Vector2 discardOffset = new Vector2(0f, -600f);
+[Header("Transition")]
+[SerializeField] CanvasGroup canvasGroup;
+[SerializeField] float hideDuration = 0.22f;
+[SerializeField] float showDuration = 0.30f;
+[SerializeField] float stagger = 0.04f;
+[SerializeField] float offscreenOffset = 400f;
 
     readonly List<CardView> views = new List<CardView>();
 
@@ -63,6 +69,90 @@ public class HandView : MonoBehaviour
         Relayout();
     }
 
+
+    void EnsureCanvasGroup()
+    {
+        if (canvasGroup == null)
+        {
+            canvasGroup = GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+    }
+
+    public IEnumerator AnimateHide()
+    {
+        EnsureCanvasGroup();
+        canvasGroup.DOKill();
+
+        var seq = DOTween.Sequence();
+        seq.Join(canvasGroup.DOFade(0f, hideDuration).SetEase(Ease.InQuad));
+
+        for (int i = 0; i < Views.Count; i++)
+        {
+            var v = Views[i];
+            if (v == null) continue;
+
+            v.KillTweens();
+            Vector2 target = v.HomePosition + Vector2.down * offscreenOffset;
+
+            var t = DOTween.Sequence();
+            t.Join(v.Rect.DOAnchorPos(target, hideDuration).SetEase(Ease.InBack));
+            t.Join(v.Rect.DOScale(0.7f, hideDuration).SetEase(Ease.InQuad));
+
+            seq.Insert(i * stagger, t);
+        }
+
+        yield return seq.WaitForCompletion();
+        gameObject.SetActive(false);
+    }
+
+    public IEnumerator AnimateShow()
+    {
+        gameObject.SetActive(true);
+        EnsureCanvasGroup();
+        canvasGroup.DOKill();
+        canvasGroup.alpha = 0f;
+
+        foreach (var v in Views)
+        {
+            if (v == null) continue;
+            v.KillTweens();
+            v.Rect.anchoredPosition = v.HomePosition + Vector2.down * offscreenOffset;
+            v.Rect.localScale = Vector3.one * 0.8f;
+        }
+
+        var seq = DOTween.Sequence();
+        seq.Append(canvasGroup.DOFade(1f, showDuration * 0.6f).SetEase(Ease.OutQuad));
+
+        for (int i = 0; i < Views.Count; i++)
+        {
+            var v = Views[i];
+            if (v == null) continue;
+
+            var t = DOTween.Sequence();
+            t.Join(v.Rect.DOAnchorPos(v.HomePosition, showDuration).SetEase(Ease.OutBack));
+            t.Join(v.Rect.DOScale(1f, showDuration).SetEase(Ease.OutBack));
+
+            seq.Insert(i * stagger, t);
+        }
+
+        yield return seq.WaitForCompletion();
+    }
+
+    public void ResetVisual()
+    {
+        EnsureCanvasGroup();
+        canvasGroup.DOKill();
+        canvasGroup.alpha = 1f;
+
+        foreach (var v in Views)
+        {
+            if (v == null) continue;
+            v.KillTweens();
+            v.Rect.anchoredPosition = v.HomePosition;
+            v.Rect.localScale = Vector3.one;
+        }
+    }
     public void Relayout()
     {
         for (int i = 0; i < views.Count; i++)

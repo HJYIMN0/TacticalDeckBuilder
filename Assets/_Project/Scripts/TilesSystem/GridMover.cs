@@ -4,9 +4,12 @@ using UnityEngine;
 
 public class GridMover : MonoBehaviour
 {
-    [SerializeField] Tile startTile;
     [SerializeField] float stepDuration = 0.2f;
+    [SerializeField] LayerMask tileMask;
+    [SerializeField] float maxDistancedFromStartTile;
 
+    public Tile startTile { get; private set; }
+    
     Tile currentTile;
     bool isMoving;
 
@@ -15,9 +18,15 @@ public class GridMover : MonoBehaviour
 
     void Start()
     {
+        if (Physics.Raycast(transform.position + Vector3.up * maxDistancedFromStartTile, Vector3.down, out RaycastHit hit, 10.5f, tileMask))
+        {
+            startTile = hit.collider.GetComponentInParent<Tile>(); // [MODIFICA] il raycast restituisce un bool: la Tile si ricava dal collider colpito
+        }
+
+        // [MODIFICA] se il raggio non trova nulla e non c'è una startTile da Inspector, fermo il componente invece di andare in NullReferenceException
         if (startTile == null)
         {
-            Debug.LogError($"[GridMover] {name}: startTile non assegnata", this);
+            Debug.LogError($"[GridMover] {name}: nessuna tile trovata sotto l'oggetto", this);
             enabled = false;
             return;
         }

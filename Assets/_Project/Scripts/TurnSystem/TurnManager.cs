@@ -62,15 +62,20 @@ public class TurnManager : GenericSingleton<TurnManager>
             round++;
             Debug.Log($"========== ROUND {round} ==========");
 
+            var handledFactions = new HashSet<Faction>();
+
             foreach (Unit u in units.ToArray())
             {
                 if (u == null) { Debug.Log("[TurnManager] Unità distrutta, salto"); continue; }
                 if (!u.IsAlive) { Debug.Log($"[TurnManager] {u.name} è morta, salto"); continue; }
-                if (u.Controller == null) { Debug.LogWarning($"[TurnManager] {u.name} senza Controller, salto"); continue; }
+                if (u.Controller == null) { Debug.LogWarning($"[TurnManager] {u.name} senza Controller"); continue; }
 
-                Debug.Log($"[TurnManager] >>> Turno di {u.name} ({u.Faction})");
+                if (!handledFactions.Add(u.Faction))
+                    continue; // questa fazione ha già agito in questo round
+
+                Debug.Log($"[TurnManager] >>> Turno di fazione {u.Faction} (guida: {u.name})");
                 yield return u.Controller.TakeTurn(u);
-                Debug.Log($"[TurnManager] <<< Fine turno di {u.name}");
+                Debug.Log($"[TurnManager] <<< Fine turno fazione {u.Faction}");
             }
 
             yield return null;

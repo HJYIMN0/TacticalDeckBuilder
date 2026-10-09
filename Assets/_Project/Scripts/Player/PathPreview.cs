@@ -5,35 +5,35 @@ using UnityEngine;
 public class PathPreview : MonoBehaviour
 {
     [SerializeField] TilePicker picker;
-    [SerializeField] GridMover mover;
+    [SerializeField] GridMover mover;              // fallback, di solito viene da SetUnit
     [SerializeField] Color reachableColor = Color.green;
     [SerializeField] Color unreachableColor = Color.red;
     [SerializeField] float heightOffset = 0.2f;
-    [SerializeField] int hardCap = 20; // tetto per la BFS "esplorativa" del preview
+    [SerializeField] int hardCap = 20;
 
     LineRenderer line;
     Tile lastHovered;
     CardData currentCard;
+    Unit userUnit;   // NUOVO
 
     void Awake()
     {
         line = GetComponent<LineRenderer>();
         line.useWorldSpace = true;
         line.positionCount = 0;
-        if (mover == null) mover = GetComponent<GridMover>();
     }
 
-    public void SetCard(CardData card)
+    // NUOVO: aggancia dinamicamente l'unità attiva
+    public void SetUnit(Unit unit)
     {
-        currentCard = card;
+        userUnit = unit;
+        mover = unit != null ? unit.Mover : null;
         lastHovered = null;
-    }
-
-    public void ClearCard()
-    {
-        currentCard = null;
         Hide();
     }
+
+    public void SetCard(CardData card) { currentCard = card; lastHovered = null; }
+    public void ClearCard() { currentCard = null; Hide(); }
 
     void Update()
     {
@@ -44,7 +44,6 @@ public class PathPreview : MonoBehaviour
         if (hovered == null) { Hide(); return; }
         if (hovered == lastHovered) return;
         lastHovered = hovered;
-
         Show(hovered);
     }
 
@@ -52,38 +51,25 @@ public class PathPreview : MonoBehaviour
     {
         if (destination == mover.CurrentTile) { Hide(); lastHovered = destination; return; }
 
-        if (currentCard is MovementCard move)
-        {
-            ShowMovement(destination, move.maxDistance);
-        }
-        else if (currentCard is AttackCard attack)
-        {
-            ShowAttack(destination, attack);
-        }
-        else
-        {
-            line.positionCount = 0;
-        }
+        if (currentCard is MovementCard move) ShowMovement(destination, move.maxDistance);
+        else if (currentCard is AttackCard attack) ShowAttack(destination, attack);
+        else line.positionCount = 0;
     }
 
     void ShowMovement(Tile destination, int maxDist)
     {
         if (TileManager.Instance.TryGetPath(mover.CurrentTile, destination, maxDist, out var path))
-        {
             DrawPath(path, reachableColor);
-            return;
-        }
-
-        if (TileManager.Instance.TryGetPath(mover.CurrentTile, destination, hardCap, out var fullPath))
-            DrawPath(fullPath, unreachableColor);
+        else if (TileManager.Instance.TryGetPath(mover.CurrentTile, destination, hardCap, out var full))
+            DrawPath(full, unreachableColor);
         else
             line.positionCount = 0;
     }
 
     void ShowAttack(Tile destination, AttackCard attack)
     {
-        Unit user = mover.GetComponent<Unit>();
-        var ctx = new CardContext { User = user, TargetTile = destination };
+        // Usa l'unità attiva, non GetComponent sul mover
+        var ctx = new CardContext { User = userUnit, TargetTile = destination };
         bool valid = attack.IsValidTarget(ctx);
 
         line.positionCount = 2;
@@ -100,20 +86,8 @@ public class PathPreview : MonoBehaviour
         line.startColor = line.endColor = color;
     }
 
-    int GetMaxDistance(CardData card)
-    {
-        if (card is MovementCard m) return m.maxDistance;
-        return 0;
-    }
+    void Hide() { line.positionCount = 0; lastHovered = null; }
 
-    void Hide()
-    {
-        line.positionCount = 0;
-        lastHovered = null;
-    }
-
-    Vector3 ToLinePoint(Vector3 p)
-    {
-        return new Vector3(p.x, transform.position.y + heightOffset, p.z);
-    }
+    Vector3 ToLinePoint(Vector3 p) =>
+        new Vector3(p.x, transform.position.y + heightOffset, p.z);
 }

@@ -1,126 +1,226 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class PlayerController : AbstractUnitController
 {
     [SerializeField] TilePicker picker;
-    [SerializeField] HandView handView;
+    [SerializeField] MultiHandView handView;
     [SerializeField] PathPreview pathPreview;
+    [SerializeField] UnitSelectorUI unitSelector;
+    [SerializeField] GlobalEnergyManager energy; // opzionale: fallback su singleton
 
     PlayerAction pending;
     bool hasPending;
 
+    List<Unit> controlledUnits;
+    Unit activeUnit;
+    CardView activeCard;
+
+    GlobalEnergyManager Energy => energy != null ? energy : GlobalEnergyManager.Instance;
+    Coroutine switchRoutine;
+    bool isSwitching;
+
     public override IEnumerator TakeTurn(Unit unit)
     {
-        if (picker == null || handView == null)
+        if (picker == null || handView == null || unitSelector == null)
         {
-            Debug.LogError("[Player] Setup mancante (picker/handView)");
+            Debug.LogError("[Player] Setup mancante (picker/handView/unitSelector)");
             yield break;
         }
-        if (!TurnManager.HasInstance)
+        if (Energy == null)
         {
-            Debug.LogError("[Player] TurnManager non disponibile");
+            Debug.LogError("[Player] GlobalEnergyManager non trovato");
             yield break;
         }
 
-        Debug.Log($"[Player] === Inizio turno (drawPerTurn={unit.DrawPerTurn}) ===");
+        // --- Raccogli tutte le unità della fazione guidata da questo player ---
+        controlledUnits = FindObjectsByType<Unit>(FindObjectsInactive.Exclude)
+            .Where(u => u.Faction == unit.Faction
+                     && u.Controller is PlayerController
+                     && u.IsAlive)
+            .ToList();
 
-        // 1. Pesca N carte
-        unit.Deck.Draw(unit.DrawPerTurn);
-        List<CardData> drawn = new List<CardData>(unit.Deck.Hand);
-        Debug.Log($"[Player] Pescate {drawn.Count} carte:");
-        foreach (var c in drawn) Debug.Log($"  - {c.cardName} (cost {c.cost})");
+        Debug.Log($"[Player] === Inizio turno fazione {unit.Faction} | {controlledUnits.Count} unità ===");
 
-        // 2. Spawn viste
-        foreach (var c in drawn)
-            handView.SpawnAt(c, Vector2.down * 600f);
-        yield return handView.AnimateAllToHome();
+        // --- Energia globale: reset ---
+        Energy.ResetForTurn();
 
-        // 3. Loop principale
-        CardView active = null;
+        // --- Pesca per ogni unità ---
+        foreach (var u in controlledUnits)
+        {
+            u.Deck.Draw(u.DrawPerTurn);
+            var hand = handView.GetOrCreate(u);
+            foreach (var c in u.Deck.Hand)
+                hand.SpawnAt(c, Vector2.down * 600f);
+            yield return hand.AnimateAllToHome();
+        }
+
+        // --- UI selezione unità ---
+        unitSelector.Build(controlledUnits, controlledUnits[0]);
+        unitSelector.UnitSelected += OnUnitSelected;
+
+               // --- Attiva prima unità (istantaneo, no animazione al primo setup) ---
+        activeUnit = controlledUnits[0];
+        handView.SetActive(controlledUnits[0]);
+        unitSelector.SetActive(controlledUnits[0]);
+        if (pathPreview != null) pathPreview.SetUnit(controlledUnits[0]);
+
+        // --- Loop principale ---
         bool endTurn = false;
-
         while (!endTurn)
         {
             yield return WaitForAction();
 
-            PlayerAction action = pending;
+            var action = pending;
             hasPending = false;
 
             switch (action.Type)
             {
                 case PlayerAction.Kind.EndTurn:
                     Debug.Log("[Player] End turn ricevuto");
-                    if (active != null) { active.Deselect(); active = null; }
+                    if (activeCard != null) { activeCard.Deselect(); activeCard = null; }
                     if (pathPreview != null) pathPreview.ClearCard();
                     endTurn = true;
                     break;
 
                 case PlayerAction.Kind.CardClicked:
-                    CardView clicked = action.CardView;
-                    if (active == clicked)
-                    {
-                        Debug.Log($"[Player] {active.Card.cardName} già selezionata");
-                        break;
-                    }
-                    if (active != null)
-                    {
-                        Debug.Log($"[Player] Cambio carta: {active.Card.cardName} -> {clicked.Card.cardName}");
-                        active.Deselect();
-                    }
-                    else
-                    {
-                        Debug.Log($"[Player] Seleziono {clicked.Card.cardName}");
-                    }
-                    active = clicked;
-                    active.Select();
-                    if (pathPreview != null) pathPreview.SetCard(active.Card);
+                    HandleCardClick(action.CardView);
                     break;
 
                 case PlayerAction.Kind.TileClicked:
-                    Tile target = action.TileTarget;
-                    if (active == null)
-                    {
-                        Debug.Log("[Player] Tile cliccata senza carta selezionata, ignoro");
-                        break;
-                    }
-
-                    var ctx = new CardContext { User = unit, TargetTile = target };
-                    bool valid = active.Card.IsValidTarget(ctx);
-                    Debug.Log($"[Player] Tile {target.Coord} con {active.Card.cardName}. IsValidTarget = {valid}");
-
-                    if (valid)
-                    {
-                        if (pathPreview != null) pathPreview.ClearCard();
-                        Debug.Log($"[Player] Gioco {active.Card.cardName} su {target.Coord}");
-                        active.Deselect();
-                        yield return active.Card.Play(ctx);
-                        unit.Deck.Discard(active.Card);
-                        Debug.Log($"[Player] Scarto {active.Card.cardName}");
-                        yield return handView.AnimateDiscard(active);
-                        active = null;
-                    }
-                    else
-                    {
-                        Debug.Log("[Player] Tile non valida, riprova");
-                        active.Shake();
-                    }
+                    yield return HandleTileClick(action.TileTarget);
                     break;
             }
         }
 
-        // 4. Scarta la mano residua
-        int remaining = handView.Views.Count;
-        Debug.Log($"[Player] Fine turno. Scarto {remaining} carte residue.");
-        var snapshot = new List<CardView>(handView.Views);
-        foreach (var v in snapshot)
+        // --- Cleanup evento UI ---
+        unitSelector.UnitSelected -= OnUnitSelected;
+
+        // --- Scarta le mani residue di ogni unità ---
+        foreach (var u in controlledUnits)
         {
-            unit.Deck.Discard(v.Card);
-            yield return handView.AnimateDiscard(v);
+            var hand = handView.GetOrCreate(u);
+            var snapshot = new List<CardView>(hand.Views);
+            foreach (var v in snapshot)
+            {
+                u.Deck.Discard(v.Card);
+                yield return hand.AnimateDiscard(v);
+            }
         }
 
+        unitSelector.Clear();
+        handView.ClearAll();
+
         Debug.Log("[Player] === Fine turno ===");
+    }
+
+    // -------------------------------------------------------------------------
+
+    void SetActiveUnit(Unit u)
+    {
+        if (u == activeUnit) return;
+
+        if (activeCard != null) { activeCard.Deselect(); activeCard = null; }
+
+        activeUnit = u;
+        handView.SetActive(u);
+        unitSelector.SetActive(u);
+
+        if (pathPreview != null)
+        {
+            pathPreview.SetUnit(u);
+            pathPreview.ClearCard();
+        }
+
+        Debug.Log($"[Player] Unità attiva: {u.name}");
+    }
+
+    void OnUnitSelected(Unit u)
+    {
+        if (u == activeUnit || isSwitching) return;
+        if (switchRoutine != null) StopCoroutine(switchRoutine);
+        switchRoutine = StartCoroutine(SwitchToUnit(u));
+    }
+
+    IEnumerator SwitchToUnit(Unit u)
+    {
+        isSwitching = true;
+
+        if (activeCard != null) { activeCard.Deselect(); activeCard = null; }
+        if (pathPreview != null) pathPreview.ClearCard();
+
+        yield return handView.SetActiveAnimated(u);   // <-- niente handView.enabled
+
+        activeUnit = u;
+        unitSelector.SetActive(u);
+        if (pathPreview != null) pathPreview.SetUnit(u);
+
+        isSwitching = false;
+        switchRoutine = null;
+
+        Debug.Log($"[Player] Unità attiva: {u.name}");
+    }
+
+    void HandleCardClick(CardView view)
+    {
+        if (view == null) return;
+        if (isSwitching) return;
+        if (activeCard == view) { Debug.Log($"[Player] {view.Card.cardName} già selezionata"); return; }
+
+        if (activeCard != null) activeCard.Deselect();
+        activeCard = view;
+        activeCard.Select();
+
+        if (pathPreview != null) pathPreview.SetCard(activeCard.Card);
+
+        Debug.Log($"[Player] Seleziono {activeCard.Card.cardName} (costo {activeCard.Card.cost})");
+    }
+
+    IEnumerator HandleTileClick(Tile target)
+    {
+        if (activeCard == null || activeUnit == null) yield break;
+        if (isSwitching) yield break;
+
+        // Verifica energia
+        if (!Energy.CanSpend(activeCard.Card.cost))
+        {
+            Debug.Log("[Player] Energia insufficiente");
+            activeCard.Shake();
+            yield break;
+        }
+
+        var ctx = new CardContext
+        {
+            User = activeUnit,
+            TargetTile = target,
+            Energy = Energy
+        };
+
+        bool valid = activeCard.Card.IsValidTarget(ctx);
+        Debug.Log($"[Player] Tile {target.Coord} con {activeCard.Card.cardName}. Valido = {valid}");
+
+        if (!valid)
+        {
+            activeCard.Shake();
+            yield break;
+        }
+
+        // Spendi energia PRIMA di eseguire l'effetto
+        Energy.Spend(activeCard.Card.cost);
+
+        if (pathPreview != null) pathPreview.ClearCard();
+
+        var played = activeCard;
+        activeCard = null;
+        played.Deselect();
+
+        yield return played.Card.Play(ctx);
+
+        activeUnit.Deck.Discard(played.Card);
+        var hand = handView.GetOrCreate(activeUnit);
+        yield return hand.AnimateDiscard(played);
     }
 
     IEnumerator WaitForAction()

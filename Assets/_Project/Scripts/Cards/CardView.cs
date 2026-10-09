@@ -9,6 +9,8 @@ public class CardView : MonoBehaviour, IPointerClickHandler
     [SerializeField] Image artwork;
     [SerializeField] TMP_Text label;
     [SerializeField] RectTransform rect;
+    public RectTransform Rect => rect;
+    public Vector2 HomePosition => homePosition;
 
     public CardData Card { get; private set; }
     public System.Action<CardView> OnClicked;
@@ -49,5 +51,16 @@ public class CardView : MonoBehaviour, IPointerClickHandler
         rect.DOShakeAnchorPos(0.25f, 20f, 20, 90, false, true);
     }
 
+
+    public void KillTweens()
+    {
+        if (rect != null) rect.DOKill();
+    }
+
+    public void SetHomeInstant(Vector2 pos)
+    {
+        homePosition = pos;
+        if (rect != null) rect.anchoredPosition = pos;
+    }
     public void OnPointerClick(PointerEventData eventData) => OnClicked?.Invoke(this);
 }

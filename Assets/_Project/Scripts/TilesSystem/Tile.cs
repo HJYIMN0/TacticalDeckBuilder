@@ -2,13 +2,16 @@ using UnityEngine;
 
 public class Tile : MonoBehaviour
 {
-    public Vector2Int Coord { get; private set; }
+    // [MODIFICA] coord serializzata: la assegna TileGrid in editor e deve sopravvivere fuori dal Play (l'auto-property non veniva salvata)
+    [SerializeField] Vector2Int coord;
+    public Vector2Int Coord => coord;
+
     public Unit Occupant { get; private set; }
 
     [SerializeField] bool walkable = true;
     public bool IsWalkable => walkable && Occupant == null;
-
-    public void SetCoord(Vector2Int coord) => Coord = coord;
+    public TileHighlight Highlight { get; private set; }
+    public void SetCoord(Vector2Int coord) => this.coord = coord;
 
     public void SetOccupant(Unit unit)
     {
@@ -17,9 +20,10 @@ public class Tile : MonoBehaviour
 
         Occupant = unit;
     }
-
-    void Start()
+    void Awake()
     {
-        TileManager.Instance.Register(this);
+        Highlight = GetComponent<TileHighlight>();
+        if (Highlight == null)
+            Debug.LogError($"[Tile] {name}: manca il componente TileHighlight sul prefab", this);
     }
 }

@@ -60,4 +60,16 @@ public class Deck
             (list[i], list[j]) = (list[j], list[i]);
         }
     }
+
+    // CLASSE: Deck
+    // Aggiungi questo metodo
+
+    public void AddBonusCards(IEnumerable<CardData> cards)
+    {
+        foreach (var c in cards)
+            if (c != null)
+                drawPile.Add(c);   // oppure hand, se preferisci
+
+        Shuffle(drawPile);
+    }
 }

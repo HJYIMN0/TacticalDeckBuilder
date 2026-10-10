@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.XR;
 
 public class PlayerController : AbstractUnitController
 {
@@ -47,15 +48,33 @@ public class PlayerController : AbstractUnitController
         // --- Energia globale: reset ---
         Energy.ResetForTurn();
 
+        if (AreaManager.HasInstance)
+            AreaManager.Instance.ApplyBonusesFor(unit.Faction, Energy);
+
         // --- Pesca per ogni unità ---
         foreach (var u in controlledUnits)
         {
             u.Deck.Draw(u.DrawPerTurn);
             var hand = handView.GetOrCreate(u);
+
+            // il prefab nasce attivo: lo teniamo attivo solo il tempo necessario
+            // a SpawnAt per piazzare le carte, poi lo nascondiamo subito.
+            hand.gameObject.SetActive(true);
+
             foreach (var c in u.Deck.Hand)
                 hand.SpawnAt(c, Vector2.down * 600f);
-            yield return hand.AnimateAllToHome();
+
+            // NON chiamare AnimateAllToHome qui: verrebbe mostrata a schermo.
+            hand.HideInstant();
         }
+
+        // --- Mostra SOLO la mano della prima unità, con animazione ---
+        yield return handView.ShowHand(controlledUnits[0]);
+
+        // --- Attiva prima unità anche a livello logico/UI ---
+        activeUnit = controlledUnits[0];
+        unitSelector.SetActive(controlledUnits[0]);
+        if (pathPreview != null) pathPreview.SetUnit(controlledUnits[0]);
 
         // --- UI selezione unità ---
         unitSelector.Build(controlledUnits, controlledUnits[0]);
@@ -241,4 +260,5 @@ public class PlayerController : AbstractUnitController
         picker.TileClicked -= OnTile;
         TurnManager.Instance.EndTurnRequested -= OnEnd;
     }
+
 }

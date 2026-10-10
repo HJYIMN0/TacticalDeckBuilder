@@ -27,21 +27,23 @@ public class MultiHandView : MonoBehaviour
         return h;
     }
 
-    /// <summary>Switch istantaneo (nessuna animazione). Utile per setup iniziale.</summary>
     public void SetActive(Unit u)
     {
         activeUnit = u;
         foreach (var kv in hands)
-            if (kv.Value != null)
-                kv.Value.gameObject.SetActive(kv.Key == u);
+        {
+            if (kv.Value == null) continue;
+            bool show = kv.Key == u;
+            kv.Value.gameObject.SetActive(show);
+            if (show) kv.Value.ResetVisual();   // <-- vedi Patch 3
+        }
     }
 
-    /// <summary>Switch animato: hide della vecchia mano + show della nuova.</summary>
     public IEnumerator SetActiveAnimated(Unit u)
     {
         if (u == activeUnit) yield break;
 
-        // 1) nascondi la vecchia mano
+        // 1) nascondi la vecchia mano (se attiva)
         if (activeUnit != null
             && hands.TryGetValue(activeUnit, out var oldHand)
             && oldHand != null
@@ -53,10 +55,13 @@ public class MultiHandView : MonoBehaviour
         // 2) aggiorna riferimento attivo
         activeUnit = u;
 
-        // 3) sicurezza: spegni eventuali altre mani rimaste accese
+        // 3) spegni QUALSIASI altra mano rimasta accesa
         foreach (var kv in hands)
-            if (kv.Key != u && kv.Value != null && kv.Value.gameObject.activeSelf)
+        {
+            if (kv.Key == u || kv.Value == null) continue;
+            if (kv.Value.gameObject.activeSelf)
                 kv.Value.gameObject.SetActive(false);
+        }
 
         // 4) mostra la nuova mano
         if (hands.TryGetValue(u, out var newHand) && newHand != null)
@@ -69,5 +74,41 @@ public class MultiHandView : MonoBehaviour
             if (kv.Value != null) Destroy(kv.Value.gameObject);
         hands.Clear();
         activeUnit = null;
+    }
+    /// <summary>
+    /// Nasconde TUTTE le mani istantaneamente (nessuna animazione).
+    /// Usato subito dopo lo spawn iniziale per evitare che più mani appaiano insieme.
+    /// </summary>
+
+    public void HideAll()
+    {
+        foreach (var kv in hands)
+        {
+            if (kv.Value == null) continue;
+            kv.Value.HideInstant();
+        }
+        activeUnit = null;
+    }
+
+    /// <summary>
+    ///  Rende attiva l'unità indicata e mostra la sua mano con l'animazione di reveal.
+    ///  Le altre mani restano nascoste.</summary>
+    /// <param name="u"></param>
+    /// <returns></returns>
+
+    public IEnumerator ShowHand(Unit u)
+    {
+        if (!hands.TryGetValue(u, out var hand) || hand == null) yield break;
+
+        // spegni ogni altra mano ancora accesa (sicurezza)
+        foreach (var kv in hands)
+        {
+            if (kv.Key == u || kv.Value == null) continue;
+            if (kv.Value.gameObject.activeSelf)
+                kv.Value.gameObject.SetActive(false);
+        }
+
+        activeUnit = u;
+        yield return hand.AnimateShow();
     }
 }

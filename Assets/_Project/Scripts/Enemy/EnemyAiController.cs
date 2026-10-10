@@ -174,4 +174,25 @@ public class EnemyAiController : AbstractUnitController
     }
 
     void NotifyIntentChanged() => OnIntentChanged?.Invoke();
+
+    // CLASSE: EnemyAiController
+    // Aggiungi questo metodo di utility
+
+    List<ObjectiveTile> FindPrioritizedObjectives()
+    {
+        var all = FindObjectsByType<ObjectiveTile>(FindObjectsInactive.Exclude);
+        var result = new List<ObjectiveTile>();
+
+        foreach (var o in all)
+        {
+            if (o == null || o.Tile == null) continue;
+            // opzionale: salta quelli già tuoi
+            if (o.Owner == GetComponent<Unit>().Faction) continue;
+            result.Add(o);
+        }
+
+        // ordina per priorità decrescente
+        result.Sort((a, b) => b.AiPriority.CompareTo(a.AiPriority));
+        return result;
+    }
 }

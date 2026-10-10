@@ -15,4 +15,7 @@ MonoBehaviour:
   cardName: Carta movimento
   cost: 1
   artwork: {fileID: 0}
-  maxDistance: 2
+  maxDistance: 3
+  walkableLayerMask:
+    serializedVersion: 2
+    m_Bits: 8

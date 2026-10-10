@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using System;
 
 public class HandView : MonoBehaviour
 {
@@ -12,12 +12,13 @@ public class HandView : MonoBehaviour
     [SerializeField] float drawDuration = 0.4f;
     [SerializeField] float discardDuration = 0.35f;
     [SerializeField] Vector2 discardOffset = new Vector2(0f, -600f);
-[Header("Transition")]
-[SerializeField] CanvasGroup canvasGroup;
-[SerializeField] float hideDuration = 0.22f;
-[SerializeField] float showDuration = 0.30f;
-[SerializeField] float stagger = 0.04f;
-[SerializeField] float offscreenOffset = 400f;
+    
+    [Header("Transition")]
+    [SerializeField] CanvasGroup canvasGroup;
+    [SerializeField] float hideDuration = 0.22f;
+    [SerializeField] float showDuration = 0.30f;
+    [SerializeField] float stagger = 0.04f;
+    [SerializeField] float offscreenOffset = 400f;
 
     readonly List<CardView> views = new List<CardView>();
 
@@ -169,4 +170,30 @@ public class HandView : MonoBehaviour
     }
 
     void HandleClicked(CardView view) => CardClicked?.Invoke(view);
+
+    /// <summary>
+    /// Nasconde la mano immediatamente (nessuna animazione).
+    /// Le carte restano nella loro posizione corrente, alpha a 0, GameObject disattivato.
+    ///Usato dopo lo spawn iniziale per evitare che più mani appaiano insieme.
+    ///</summary>
+
+
+    public void HideInstant()
+    {
+        EnsureCanvasGroup();
+        canvasGroup.DOKill();
+        canvasGroup.alpha = 0f;
+
+        foreach (var v in Views)
+        {
+            if (v == null) continue;
+            v.KillTweens();                        // ferma tween in corso sulle carte
+            v.Rect.localScale = Vector3.one;       // pulisci eventuali scale residue
+        }
+
+        gameObject.SetActive(false);
+    }
+
+
+
 }

@@ -17,3 +17,7 @@ MonoBehaviour:
   artwork: {fileID: 0}
   maxDistance: 1
   damage: 3
+  blockingMask:
+    serializedVersion: 2
+    m_Bits: 64
+  rayHeight: 0.5

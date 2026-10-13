@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿// FILE: Assets/_Project/Scripts/Tiles/DestructibleTile.cs
+// CLASSE: DestructibleTile
+
+using UnityEngine;
 
 public class DestructibleTile : ObjectiveTile
 {
@@ -23,18 +26,19 @@ public class DestructibleTile : ObjectiveTile
         Debug.Log($"[DestructibleTile] {name} subisce {amount} → {currentHp}/{maxHp}");
 
         if (currentHp <= 0)
-            Destroy(source);
+            OnDestroyed(source);
     }
 
-    void Destroy(Unit source)
+    void OnDestroyed(Unit source)
     {
         Faction winner = source != null ? source.Faction : Faction.Neutral;
         Debug.Log($"[DestructibleTile] {name} distrutta da {source?.name} ({winner})");
 
-        // TODO: bonus al faction vincitore (energia, carte, punti, ...)
-        // Esempio: 
-        // if (winner == Faction.Player)
-        //     GlobalEnergyManager.Instance.Add(5);
+        // ✅ notifica l'abilità del killer (se presente)
+        if (source != null)
+            source.NotifyObjectiveDestroyed(this);
+
+        // TODO: bonus al faction vincitore (energia, carte, ...)
 
         gameObject.SetActive(false);
     }

@@ -5,6 +5,12 @@ public class TileManager : GenericSingleton<TileManager>
 {
     [SerializeField] float cellSize = 1f;
 
+    [Header("Terreno")]
+    [Tooltip("Dislivello massimo tra i bordi di due tile adiacenti per poter passare dall'una all'altra.")]
+    [SerializeField, Min(0f)] float maxStepHeight = 0.5f;
+    [Tooltip("Una tile più inclinata di così non è calpestabile.")]
+    [SerializeField, Range(0f, 89f)] float maxWalkableSlope = 45f;
+
     public override bool IsDestroyedOnLoad() => true;
     public override bool ShouldDetatchFromParent() => true;
 
@@ -74,6 +80,7 @@ public class TileManager : GenericSingleton<TileManager>
             {
                 if (neighbor == null) continue;
                 if (!neighbor.IsWalkable) continue;
+                if (!CanStep(current, neighbor)) continue; // [MODIFICA] dislivello/pendenza troppo alti
                 if (cameFrom.ContainsKey(neighbor)) continue;
 
                 int nd = dist[current] + 1;
@@ -121,6 +128,7 @@ public class TileManager : GenericSingleton<TileManager>
             foreach (Tile n in GetNeighbors(current))
             {
                 if (n == null || !n.IsWalkable) continue;
+                if (!CanStep(current, n)) continue; // [MODIFICA] stessa regola di TryGetPath
                 if (visited.Contains(n)) continue;
                 visited.Add(n);
                 queue.Enqueue((n, dist + 1));
@@ -128,5 +136,16 @@ public class TileManager : GenericSingleton<TileManager>
         }
 
         return result;
+    }
+    
+    //si può passare da 'from' a 'to' (adiacenti)? Confronta i bordi che si toccano
+    public bool CanStep(Tile from, Tile to)
+    {
+        if (to.SlopeAngle > maxWalkableSlope) return false;
+
+        Vector2Int dir = to.Coord - from.Coord;
+        float fromEdge = from.GetEdgeHeight(dir);
+        float toEdge = to.GetEdgeHeight(-dir);
+        return Mathf.Abs(fromEdge - toEdge) <= maxStepHeight + 0.001f;
     }
 }

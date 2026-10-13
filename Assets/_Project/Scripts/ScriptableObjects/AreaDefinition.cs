@@ -12,4 +12,9 @@ public class AreaDefinition : ScriptableObject
 
     [Tooltip("Carte aggiunte al deck del faction quando controlla l'area")]
     public List<CardData> bonusCards = new List<CardData>();
+
+
+    [Tooltip("True: le bonusCards vanno a TUTTE le unità della fazione. " +
+             "False: solo al conquistatore (unità che ha triggerato la conquista)")]
+    public bool isCardForAllFaction = true;
 }

@@ -63,7 +63,14 @@ public class PathPreview : MonoBehaviour
         else if (TileManager.Instance.TryGetPath(mover.CurrentTile, destination, hardCap, out var full))
             DrawPath(full, unreachableColor);
         else
-            line.positionCount = 0;
+        {
+            // nessun percorso possibile (dislivello, tile non calpestabile...): linea rossa diretta
+            // dall'unità alla tile puntata, invece di non mostrare nulla
+            line.positionCount = 2;
+            line.SetPosition(0, ToLinePoint(mover.CurrentTile.transform.position));
+            line.SetPosition(1, ToLinePoint(destination.transform.position));
+            line.startColor = line.endColor = unreachableColor;
+        }
     }
 
     void ShowAttack(Tile destination, AttackCard attack)
@@ -89,5 +96,5 @@ public class PathPreview : MonoBehaviour
     void Hide() { line.positionCount = 0; lastHovered = null; }
 
     Vector3 ToLinePoint(Vector3 p) =>
-        new Vector3(p.x, transform.position.y + heightOffset, p.z);
+        new Vector3(p.x, p.y + heightOffset, p.z);
 }

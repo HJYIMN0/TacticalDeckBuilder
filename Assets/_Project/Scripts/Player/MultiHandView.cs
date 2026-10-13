@@ -22,6 +22,11 @@ public class MultiHandView : MonoBehaviour
 
         var h = Instantiate(handViewPrefab, container);
         h.gameObject.name = $"Hand_{u.name}";
+
+        // [MODIFICA] la mano nasce nascosta (alpha 0 + SetActive(false)): nessun frame
+        // in cui può essere visibile, anche se in futuro si aggiunge uno yield nello spawn.
+        h.HideInstant();
+
         h.CardClicked += v => { if (u == activeUnit) CardClicked?.Invoke(v); };
         hands[u] = h;
         return h;
@@ -38,10 +43,14 @@ public class MultiHandView : MonoBehaviour
             if (show) kv.Value.ResetVisual();   // <-- vedi Patch 3
         }
     }
-
     public IEnumerator SetActiveAnimated(Unit u)
     {
         if (u == activeUnit) yield break;
+
+        // [MODIFICA] se l'unità non ha una mano, esci PRIMA di nascondere la vecchia
+        // (prima: la vecchia spariva, activeUnit puntava a un'unità senza mano e non appariva nulla).
+        hands.TryGetValue(u, out var newHand);
+        if (newHand == null) yield break;
 
         // 1) nascondi la vecchia mano (se attiva)
         if (activeUnit != null
@@ -64,8 +73,8 @@ public class MultiHandView : MonoBehaviour
         }
 
         // 4) mostra la nuova mano
-        if (hands.TryGetValue(u, out var newHand) && newHand != null)
-            yield return newHand.AnimateShow();
+        // [MODIFICA] usa newHand dichiarata sopra (non più un secondo TryGetValue)
+        yield return newHand.AnimateShow();
     }
 
     public void ClearAll()
@@ -95,7 +104,6 @@ public class MultiHandView : MonoBehaviour
     ///  Le altre mani restano nascoste.</summary>
     /// <param name="u"></param>
     /// <returns></returns>
-
     public IEnumerator ShowHand(Unit u)
     {
         if (!hands.TryGetValue(u, out var hand) || hand == null) yield break;
@@ -108,7 +116,17 @@ public class MultiHandView : MonoBehaviour
                 kv.Value.gameObject.SetActive(false);
         }
 
+        // [MODIFICA] [DEBUG] temporaneo, da togliere dopo la diagnosi:
+        // elenca TUTTI i figli del container, anche quelli non presenti nel dictionary
+        for (int i = 0; i < container.childCount; i++)
+        {
+            var c = container.GetChild(i);
+            Debug.Log($"[MultiHandView] container child {i}: {c.name} active={c.gameObject.activeSelf}");
+        }
+
         activeUnit = u;
         yield return hand.AnimateShow();
     }
+
+
 }

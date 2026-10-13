@@ -96,10 +96,10 @@ public class TileGrid : MonoBehaviour
                 }
 
                 Undo.RecordObject(tile.transform, "Position Tile");
-                tile.transform.localPosition = new Vector3(x * CellSize, 0f, y * CellSize);
-                tile.transform.localScale = Vector3.one * (tileSize / PlaneBaseSize);
-
+                // [MODIFICA] Undo su Tile spostato qui: ApplyTerrain scrive anche il campo 'size' del Tile
                 Undo.RecordObject(tile, "Set Tile Coord");
+                // [MODIFICA] posizione/rotazione/scala ora vengono da Tile (altezza e pendenza), non più Y = 0 fissa
+                tile.ApplyTerrain(x * CellSize, y * CellSize, tileSize, PlaneBaseSize);
                 tile.SetCoord(coord);
                 tile.name = $"Tile ({x},{y})";
                 PrefabUtility.RecordPrefabInstancePropertyModifications(tile.transform);

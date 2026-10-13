@@ -25,28 +25,17 @@ public class HandView : MonoBehaviour
     public event Action<CardView> CardClicked;
     public IReadOnlyList<CardView> Views => views;
 
-    public CardView SpawnAt(CardData card, Vector2 startOffset)
-    {
-        CardView view = Instantiate(cardPrefab, handRoot);
-        view.OnClicked += HandleClicked;
-        views.Add(view);
-        view.Bind(card);
-
-        RectTransform rt = view.GetComponent<RectTransform>();
-        Vector2 home = GetSlotPosition(views.Count - 1);
-        rt.anchoredPosition = home + startOffset;
-        rt.localScale = Vector3.one * 0.6f;
-        view.SetHome(home);
-        return view;
-    }
-
     public IEnumerator AnimateAllToHome()
     {
         int count = views.Count;
         for (int i = 0; i < count; i++)
         {
+            if (i >= views.Count) break;
+
             CardView v = views[i];
-            RectTransform rt = v.GetComponent<RectTransform>();
+            if (v == null) continue;               
+
+            RectTransform rt = v.Rect;
             Vector2 home = GetSlotPosition(i);
             v.SetHome(home);
             rt.DOAnchorPos(home, drawDuration).SetEase(Ease.OutBack);
@@ -57,16 +46,25 @@ public class HandView : MonoBehaviour
 
     public IEnumerator AnimateDiscard(CardView view)
     {
+        // view distrutta?
+        if (view == null) yield break;
+
+        // già scartata da questa mano?
+        if (!views.Contains(view)) yield break;
+
         view.OnClicked -= HandleClicked;
         views.Remove(view);
 
-        RectTransform rt = view.GetComponent<RectTransform>();
+        // usa la proprietà cached, non GetComponent (evita chiamate native su OG morti)
+        RectTransform rt = view.Rect;
         rt.DOAnchorPos(rt.anchoredPosition + discardOffset, discardDuration).SetEase(Ease.InBack);
         rt.DOScale(0.3f, discardDuration);
 
         yield return new WaitForSeconds(discardDuration);
 
-        Destroy(view.gameObject);
+        if (view != null)
+            Destroy(view.gameObject);
+
         Relayout();
     }
 
@@ -157,7 +155,10 @@ public class HandView : MonoBehaviour
     public void Relayout()
     {
         for (int i = 0; i < views.Count; i++)
+        {
+            if (views[i] == null) continue;
             views[i].SetHome(GetSlotPosition(i));
+        }
     }
 
     Vector2 GetSlotPosition(int index)
@@ -193,7 +194,23 @@ public class HandView : MonoBehaviour
 
         gameObject.SetActive(false);
     }
+    public CardView SpawnAt(CardData card, Vector2 startOffset)
+    {
+        CardView view = Instantiate(cardPrefab, handRoot);
+        view.OnClicked += HandleClicked;
+        views.Add(view);
+        view.Bind(card);
 
+        // [MODIFICA] ricalcola le home di TUTTE le carte con il conteggio aggiornato.
+        // Prima ogni carta aveva la home calcolata col conteggio parziale (0, +100, +200...).
+        Relayout();
 
+        RectTransform rt = view.GetComponent<RectTransform>();
+        Vector2 home = GetSlotPosition(views.Count - 1);
+        rt.anchoredPosition = home + startOffset;
+        rt.localScale = Vector3.one * 0.6f;
+        view.SetHome(home);
+        return view;
+    }
 
 }

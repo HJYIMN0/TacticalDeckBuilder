@@ -22,7 +22,9 @@ public class PlayerController : AbstractUnitController
     GlobalEnergyManager Energy => energy != null ? energy : GlobalEnergyManager.Instance;
     Coroutine switchRoutine;
     bool isSwitching;
+    bool isResolvingCard;
 
+    // CLASSE: PlayerController
     public override IEnumerator TakeTurn(Unit unit)
     {
         if (picker == null || handView == null || unitSelector == null)
@@ -57,32 +59,29 @@ public class PlayerController : AbstractUnitController
             u.Deck.Draw(u.DrawPerTurn);
             var hand = handView.GetOrCreate(u);
 
-            // il prefab nasce attivo: lo teniamo attivo solo il tempo necessario
-            // a SpawnAt per piazzare le carte, poi lo nascondiamo subito.
+            // la mano nasce nascosta (GetOrCreate): la attiviamo solo il tempo
+            // necessario a SpawnAt per piazzare le carte.
             hand.gameObject.SetActive(true);
 
             foreach (var c in u.Deck.Hand)
                 hand.SpawnAt(c, Vector2.down * 600f);
 
-            // NON chiamare AnimateAllToHome qui: verrebbe mostrata a schermo.
-            hand.HideInstant();
         }
+
+        // nascondi TUTTE le mani in un colpo solo (istantaneo) e azzera activeUnit di MultiHandView
+        handView.HideAll();
 
         // --- Mostra SOLO la mano della prima unità, con animazione ---
         yield return handView.ShowHand(controlledUnits[0]);
 
-        // --- Attiva prima unità anche a livello logico/UI ---
+        // [MODIFICA] unico blocco di attivazione della prima unità.
+        // Rimossi: il primo blocco (SetActive selector + SetUnit prima di Build) e
+        // handView.SetActive(...) dopo ShowHand: ShowHand imposta già activeUnit e mostra la mano.
         activeUnit = controlledUnits[0];
-        unitSelector.SetActive(controlledUnits[0]);
-        if (pathPreview != null) pathPreview.SetUnit(controlledUnits[0]);
 
         // --- UI selezione unità ---
         unitSelector.Build(controlledUnits, controlledUnits[0]);
         unitSelector.UnitSelected += OnUnitSelected;
-
-               // --- Attiva prima unità (istantaneo, no animazione al primo setup) ---
-        activeUnit = controlledUnits[0];
-        handView.SetActive(controlledUnits[0]);
         unitSelector.SetActive(controlledUnits[0]);
         if (pathPreview != null) pathPreview.SetUnit(controlledUnits[0]);
 
@@ -158,7 +157,7 @@ public class PlayerController : AbstractUnitController
 
     void OnUnitSelected(Unit u)
     {
-        if (u == activeUnit || isSwitching) return;
+        if (u == activeUnit || isSwitching || isResolvingCard) return;
         if (switchRoutine != null) StopCoroutine(switchRoutine);
         switchRoutine = StartCoroutine(SwitchToUnit(u));
     }
@@ -200,46 +199,54 @@ public class PlayerController : AbstractUnitController
     IEnumerator HandleTileClick(Tile target)
     {
         if (activeCard == null || activeUnit == null) yield break;
-        if (isSwitching) yield break;
+        if (isSwitching || isResolvingCard) yield break;
+
+        isResolvingCard = true;
+
+        // Snapshot: da qui in poi activeUnit può cambiare (switch in parallelo),
+        // quindi NON rileggere i campi. Usa solo variabili locali.
+        var user = activeUnit;
+        var card = activeCard;
 
         // Verifica energia
-        if (!Energy.CanSpend(activeCard.Card.cost))
+        if (!Energy.CanSpend(card.Card.cost))
         {
             Debug.Log("[Player] Energia insufficiente");
-            activeCard.Shake();
+            card.Shake();
+            isResolvingCard = false;
             yield break;
         }
 
         var ctx = new CardContext
         {
-            User = activeUnit,
+            User = user,
             TargetTile = target,
             Energy = Energy
         };
 
-        bool valid = activeCard.Card.IsValidTarget(ctx);
-        Debug.Log($"[Player] Tile {target.Coord} con {activeCard.Card.cardName}. Valido = {valid}");
+        bool valid = card.Card.IsValidTarget(ctx);
+        Debug.Log($"[Player] Tile {target.Coord} con {card.Card.cardName}. Valido = {valid}");
 
         if (!valid)
         {
-            activeCard.Shake();
+            card.Shake();
+            isResolvingCard = false;
             yield break;
         }
 
-        // Spendi energia PRIMA di eseguire l'effetto
-        Energy.Spend(activeCard.Card.cost);
-
+        Energy.Spend(card.Card.cost);
         if (pathPreview != null) pathPreview.ClearCard();
 
-        var played = activeCard;
         activeCard = null;
-        played.Deselect();
+        card.Deselect();
 
-        yield return played.Card.Play(ctx);
+        yield return card.Card.Play(ctx);
 
-        activeUnit.Deck.Discard(played.Card);
-        var hand = handView.GetOrCreate(activeUnit);
-        yield return hand.AnimateDiscard(played);
+        user.Deck.Discard(card.Card);
+        var hand = handView.GetOrCreate(user);   // ← usa lo snapshot, non activeUnit
+        yield return hand.AnimateDiscard(card);
+
+        isResolvingCard = false;
     }
 
     IEnumerator WaitForAction()
@@ -259,6 +266,20 @@ public class PlayerController : AbstractUnitController
         handView.CardClicked -= OnCard;
         picker.TileClicked -= OnTile;
         TurnManager.Instance.EndTurnRequested -= OnEnd;
+    }
+    void HandleCardsDrawn(Unit u, List<CardData> cards)
+    {
+        var hand = handView.GetOrCreate(u);
+
+        foreach (var c in cards)
+            hand.SpawnAt(c, Vector2.down * 600f);
+
+        // Se l'unità è quella attiva, anima subito; altrimenti le carte
+        // resteranno pronte e verranno mostrate quando si switcha.
+        if (u == activeUnit)
+            StartCoroutine(hand.AnimateAllToHome());
+        else
+            hand.HideInstant(); // mantiene le nuove carte pronte ma invisibili
     }
 
 }

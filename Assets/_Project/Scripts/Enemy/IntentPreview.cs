@@ -11,6 +11,7 @@ public class IntentPreview : MonoBehaviour
     [SerializeField] float heightOffset = 0.3f;
     [SerializeField] int hardCapPerSegment = 20;
 
+
     void Awake()
     {
         if (enemy == null) enemy = FindAnyObjectByType<EnemyAiController>();
@@ -30,7 +31,7 @@ public class IntentPreview : MonoBehaviour
         Unit enemyUnit = enemy != null ? enemy.GetComponent<Unit>() : null;
         if (enemyUnit == null || enemyUnit.Tile == null) { HideAll(); return; }
 
-        var intents = new List<EnemyAiController.Intent>(enemy.PendingIntents);
+        var intents = new List<EnemyIntent>(enemy.PendingIntents);
         if (intents.Count == 0) { HideAll(); return; }
 
         // Ricostruisco la sequenza: parto dalla posizione attuale,
@@ -46,19 +47,18 @@ public class IntentPreview : MonoBehaviour
         {
             if (intent.card is MovementCard move)
             {
-                if (TileManager.Instance.TryGetPath(simulatedPos, intent.target, move.maxDistance, out var path)
-                    && path.Count > 1)
+                if (TileManager.Instance.TryGetPath(simulatedPos, intent.target, move.maxDistance,
+                        out var path, enemyUnit) && path.Count > 1)
                 {
-                    // path[0] è la posizione simulata attuale: la salto perché già presente
                     for (int i = 1; i < path.Count; i++)
                         movePoints.Add(ToPoint(path[i].transform.position));
-
-                    simulatedPos = intent.target;
                 }
                 else
                 {
-                    Debug.LogWarning($"[IntentPreview] Segmento non ricostruibile: {simulatedPos.Coord} -> {intent.target.Coord} (max {move.maxDistance})");
+                    // Fallback: linea diretta verso il target (evita warning a raffica)
+                    movePoints.Add(ToPoint(intent.target.transform.position));
                 }
+                simulatedPos = intent.target;
             }
             else if (intent.card is AttackCard attack)
             {

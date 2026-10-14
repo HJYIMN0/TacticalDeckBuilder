@@ -52,7 +52,8 @@ public class TileManager : GenericSingleton<TileManager>
 
     // BFS su 4 direzioni. Non richiede che start sia walkable (sopra c'è l'unità stessa).
     // Il goal è raggiungibile solo se è una tile walkable.
-    public bool TryGetPath(Tile start, Tile goal, int maxDistance, out List<Tile> path)
+    // `mover`: se passato, ignora le tile occupate da alleati del mover (ma non il goal).
+    public bool TryGetPath(Tile start, Tile goal, int maxDistance, out List<Tile> path, Unit mover = null)
     {
         path = null;
         if (start == null || goal == null) return false;
@@ -80,8 +81,15 @@ public class TileManager : GenericSingleton<TileManager>
             {
                 if (neighbor == null) continue;
                 if (!neighbor.IsWalkable) continue;
-                if (!CanStep(current, neighbor)) continue; // [MODIFICA] dislivello/pendenza troppo alti
+                if (!CanStep(current, neighbor)) continue;
                 if (cameFrom.ContainsKey(neighbor)) continue;
+
+                // Blocca solo se occupata da un ALLEATO del mover, e non è il goal
+                if (neighbor != goal
+                    && mover != null
+                    && neighbor.Occupant != null
+                    && neighbor.Occupant.Faction == mover.Faction)
+                    continue;
 
                 int nd = dist[current] + 1;
                 if (nd > maxDistance) continue;
@@ -98,6 +106,41 @@ public class TileManager : GenericSingleton<TileManager>
         for (Tile t = goal; t != null; t = cameFrom[t]) path.Add(t);
         path.Reverse();
         return true;
+    }
+
+    public List<Tile> GetReachableTiles(Tile start, int maxDistance, Unit mover = null)
+    {
+        var result = new List<Tile>();
+        if (start == null) return result;
+
+        var visited = new HashSet<Tile>();
+        var queue = new Queue<(Tile tile, int dist)>();
+        queue.Enqueue((start, 0));
+        visited.Add(start);
+
+        while (queue.Count > 0)
+        {
+            var (current, dist) = queue.Dequeue();
+            result.Add(current);
+
+            if (dist >= maxDistance) continue;
+
+            foreach (Tile n in GetNeighbors(current))
+            {
+                if (n == null || !n.IsWalkable) continue;
+                if (!CanStep(current, n)) continue;
+                if (visited.Contains(n)) continue;
+
+                // Ignora alleati del mover
+                if (mover != null && n.Occupant != null && n.Occupant.Faction == mover.Faction)
+                    continue;
+
+                visited.Add(n);
+                queue.Enqueue((n, dist + 1));
+            }
+        }
+
+        return result;
     }
 
     IEnumerable<Tile> GetNeighbors(Tile tile)

@@ -9,23 +9,52 @@ public class EnemyAiController : AbstractUnitController
     [SerializeField] float playDelay = 0.3f;
     [SerializeField] bool shouldDeclareAgain = true;
 
-    public struct Intent
-    {
-        public CardData card;
-        public Tile target;
-    }
+    [Header("Comportamento")]
+    [Tooltip("Strategy che decide la pianificazione. Se null, l'enemy non fa nulla.")]
+    [SerializeField] EnemyStrategy strategy;
 
-    readonly Queue<Intent> pendingIntents = new Queue<Intent>();
+    readonly Queue<EnemyIntent> pendingIntents = new Queue<EnemyIntent>();
 
-    public IReadOnlyCollection<Intent> PendingIntents => pendingIntents;
+    public IReadOnlyCollection<EnemyIntent> PendingIntents => pendingIntents;
     public bool HasPendingIntent => pendingIntents.Count > 0;
     public bool ShouldDeclareAgain => shouldDeclareAgain;
 
     public event System.Action OnIntentChanged;
 
+    void NotifyIntentChanged() => OnIntentChanged?.Invoke();
+
+    void Awake()
+    {
+        if (strategy == null)
+            Debug.LogError($"[EnemyAiController] {name}: nessuna strategy assegnata! " +
+                           "Il nemico non farà nulla. Trascina un asset EnemyStrategy nell'Inspector.", this);
+    }
+
+    /// <summary>
+    /// Pre-dichiara le intenzioni iniziali. Chiamato da TurnManager prima che il TurnLoop parta.
+    /// Pesca, pianifica, scarta: così al Round 1 l'enemy ha già qualcosa in coda da eseguire.
+    /// </summary>
+    public void PreDeclareInitialIntent(Unit unit)
+    {
+        if (strategy == null) return;
+        if (pendingIntents.Count > 0) return; // già qualcosa in coda: non toccare
+
+        Unit player = FindPlayer();
+        if (player == null) return;
+
+        Debug.Log($"[EnemyAiController] {name} unit.Tile={(unit.Tile != null ? unit.Tile.Coord.ToString() : "NULL")} | " +
+                  $"player={player.name} player.Tile={(player.Tile != null ? player.Tile.Coord.ToString() : "NULL")}");
+
+        unit.Deck.Draw(unit.DrawPerTurn);
+        DeclareIntentions(unit, player);
+        unit.Deck.DiscardHand();
+
+        Debug.Log($"[Enemy] Pre-dichiarate {pendingIntents.Count} intenzioni iniziali");
+    }
+
     public override IEnumerator TakeTurn(Unit unit)
     {
-        Debug.Log($"[Enemy] === Turno di {unit.name} | shouldDeclareAgain={shouldDeclareAgain} | pending={pendingIntents.Count} ===");
+        Debug.Log($"[Enemy] === Turno di {unit.name} | pending={pendingIntents.Count} ===");
 
         Unit player = FindPlayer();
         if (player == null)
@@ -37,7 +66,6 @@ public class EnemyAiController : AbstractUnitController
         }
 
         unit.Deck.Draw(unit.DrawPerTurn);
-        Debug.Log($"[Enemy] Pescate {unit.Deck.Hand.Count} carte");
 
         bool hadPending = pendingIntents.Count > 0;
 
@@ -47,38 +75,29 @@ public class EnemyAiController : AbstractUnitController
             Debug.Log($"[Enemy] Eseguo {pendingIntents.Count} intenzioni dichiarate");
             while (pendingIntents.Count > 0)
             {
-                Intent intent = pendingIntents.Dequeue();
-                NotifyIntentChanged();
+                EnemyIntent intent = pendingIntents.Dequeue();
 
-                var ctx = new CardContext { User = unit, TargetTile = intent.target };
-                Debug.Log($"[Enemy] Eseguo {intent.card.cardName} -> {intent.target.Coord}");
-                yield return intent.card.Play(ctx);
-                yield return new WaitForSeconds(playDelay);
+                if (TryBuildContext(unit, intent, out CardContext ctx))
+                {
+                    Debug.Log($"[Enemy] Eseguo {intent.card.cardName} -> {ctx.TargetTile.Coord}"); // [MODIFICA] tile effettiva (può differire dall'intent)
+                    yield return intent.card.Play(ctx);
+                    yield return new WaitForSeconds(playDelay);
+                }
+
+                NotifyIntentChanged();
             }
-        }
-        else
-        {
-            Debug.Log("[Enemy] Niente in coda da eseguire");
         }
 
         // FASE DICHIARAZIONE
-        // Se non c'era nulla da eseguire, dichiaro per forza (altrimenti la coda resta vuota per sempre).
-        // Se ho appena eseguito, decido in base a shouldDeclareAgain.
         bool declareNow = !hadPending || shouldDeclareAgain;
-
         if (declareNow)
         {
-            Debug.Log("[Enemy] Dichiaro nuove intenzioni per il prossimo ciclo");
+            Debug.Log("[Enemy] Dichiaro nuove intenzioni");
             yield return new WaitForSeconds(thinkDelay);
             DeclareIntentions(unit, player);
         }
-        else
-        {
-            Debug.Log("[Enemy] shouldDeclareAgain=false: dichiaro al prossimo turno");
-        }
 
         unit.Deck.DiscardHand();
-        Debug.Log($"[Enemy] === Fine turno di {unit.name} ===");
     }
 
     void DeclareIntentions(Unit unit, Unit player)
@@ -87,78 +106,50 @@ public class EnemyAiController : AbstractUnitController
         var planned = PlanActions(unit, player);
         foreach (var intent in planned) pendingIntents.Enqueue(intent);
 
-        Debug.Log($"[Enemy] Dichiaro {pendingIntents.Count} intenzioni:");
+        Debug.Log($"[Enemy] Dichiaro {pendingIntents.Count} intenzioni");
         foreach (var i in pendingIntents)
             Debug.Log($"  - {i.card.cardName} -> {i.target.Coord}");
 
         NotifyIntentChanged();
     }
 
-    List<Intent> PlanActions(Unit unit, Unit player)
+    List<EnemyIntent> PlanActions(Unit unit, Unit player)
     {
-        var result = new List<Intent>();
+        var result = new List<EnemyIntent>();
+        if (strategy == null) return result;
+
+        // set condiviso fra tutti i nemici nello stesso ciclo di pianificazione (resettato da TurnManager.TurnLoop)
+        ISet<Tile> reserved = TurnManager.Instance.PlannedTiles;
+
         var simulatedHand = new List<CardData>(unit.Deck.Hand);
         Tile simulatedPos = unit.Tile;
 
         for (int plays = 0; plays < maxPlaysPerTurn; plays++)
         {
-            var choice = ChooseNext(simulatedHand, simulatedPos, player);
-            if (choice == null) break;
+            if (!strategy.TryChooseNext(unit, player, simulatedHand, simulatedPos, reserved, out var choice))
+                break;
 
-            result.Add(new Intent { card = choice.Value.card, target = choice.Value.tile });
-            simulatedHand.Remove(choice.Value.card);
-            simulatedPos = choice.Value.tile;
+            result.Add(choice);
+            simulatedHand.Remove(choice.card);
+
+            // Solo il movimento sposta la posizione simulata
+            if (choice.card is MovementCard)
+                simulatedPos = choice.target;
         }
+
+        // prenoto solo la tile finale: è quella su cui il nemico resta quando agisce il successivo
+        if (simulatedPos != unit.Tile)
+        {
+            reserved.Add(simulatedPos);
+            Debug.Log($"[EnemyAiController] {name} prenota {simulatedPos.Coord}");
+        }
+
+        // diagnosi piano vuoto: strategy usata e mano di partenza
+        if (result.Count == 0)
+            Debug.Log($"[EnemyAiController] {name}: piano vuoto | strategy={strategy.name} | da {unit.Tile.Coord} " +
+                      $"| player a {player.Tile.Coord} | mano=[{string.Join(", ", unit.Deck.Hand)}]");
 
         return result;
-    }
-
-    struct Choice { public CardData card; public Tile tile; }
-
-    Choice? ChooseNext(List<CardData> hand, Tile from, Unit player)
-    {
-        CardData bestCard = null;
-        Tile bestTile = null;
-        int bestScore = int.MinValue;
-        int currentDist = TileManager.Instance.GetDistance(from, player.Tile);
-
-        foreach (CardData card in hand)
-        {
-            if (card is AttackCard attack)
-            {
-                if (TileManager.Instance.GetDistance(from, player.Tile) <= attack.maxDistance)
-                {
-                    int score = 1000 + attack.damage;
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestCard = attack;
-                        bestTile = player.Tile;
-                    }
-                }
-            }
-            else if (card is MovementCard move)
-            {
-                var reachable = TileManager.Instance.GetReachableTiles(from, move.maxDistance);
-                foreach (Tile t in reachable)
-                {
-                    if (t == from) continue;
-                    int dist = TileManager.Instance.GetDistance(t, player.Tile);
-                    if (dist >= currentDist) continue;
-
-                    int score = -dist;
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestCard = move;
-                        bestTile = t;
-                    }
-                }
-            }
-        }
-
-        if (bestCard == null) return null;
-        return new Choice { card = bestCard, tile = bestTile };
     }
 
     Unit FindPlayer()
@@ -173,26 +164,60 @@ public class EnemyAiController : AbstractUnitController
         return null;
     }
 
-    void NotifyIntentChanged() => OnIntentChanged?.Invoke();
-
-    // CLASSE: EnemyAiController
-    // Aggiungi questo metodo di utility
-
-    List<ObjectiveTile> FindPrioritizedObjectives()
+    bool TryBuildContext(Unit unit, EnemyIntent intent, out CardContext ctx)
     {
-        var all = FindObjectsByType<ObjectiveTile>(FindObjectsInactive.Exclude);
-        var result = new List<ObjectiveTile>();
+        ctx = default;
 
-        foreach (var o in all)
+        if (intent.card == null || intent.target == null)
         {
-            if (o == null || o.Tile == null) continue;
-            // opzionale: salta quelli già tuoi
-            if (o.Owner == GetComponent<Unit>().Faction) continue;
-            result.Add(o);
+            Debug.LogWarning($"[EnemyAiController] {name}: intent malformato, salto");
+            return false;
         }
 
-        // ordina per priorità decrescente
-        result.Sort((a, b) => b.AiPriority.CompareTo(a.AiPriority));
-        return result;
+        Unit occupant = intent.target.Occupant;
+        bool allyOnTarget = occupant != null && occupant.Faction == unit.Faction;
+
+        ctx = new CardContext { User = unit, TargetTile = intent.target };
+
+        if (!allyOnTarget && intent.card.IsValidTarget(ctx))
+            return true;
+
+        // [MODIFICA] movimento non più eseguibile (tile occupata, percorso bloccato, fuori range):
+        // vado sulla tile raggiungibile più vicina al target invece di perdere il turno
+        if (intent.card is MovementCard move && TryAdaptMovement(unit, move, intent.target, out Tile alt))
+        {
+            var altCtx = new CardContext { User = unit, TargetTile = alt };
+            if (intent.card.IsValidTarget(altCtx))
+            {
+                Debug.Log($"[EnemyAiController] {name} ADATTA movimento {intent.target.Coord} -> {alt.Coord}");
+                ctx = altCtx;
+                return true;
+            }
+        }
+
+        Debug.Log($"[EnemyAiController] {name} SKIP {intent.card.cardName} -> {intent.target.Coord}: non eseguibile " +
+                  $"| da {unit.Tile.Coord} | dist={TileManager.Instance.GetDistance(unit.Tile, intent.target)} " +
+                  $"| occupante={(occupant != null ? occupant.name : "nessuno")}");
+        return false;
     }
+
+    // Tile raggiungibile con questa carta che avvicina di più il nemico a `wanted`. Evita le tile già prenotate
+    // da altri nemici in questo turno di fazione. Ritorna false se nessuna tile migliora la distanza attuale.
+    bool TryAdaptMovement(Unit unit, MovementCard move, Tile wanted, out Tile best)
+    {
+        best = null;
+        ISet<Tile> reserved = TurnManager.Instance.PlannedTiles;
+        int bestDist = TileManager.Instance.GetDistance(unit.Tile, wanted);
+
+        foreach (Tile t in TileManager.Instance.GetReachableTiles(unit.Tile, move.maxDistance, unit))
+        {
+            if (t == unit.Tile || reserved.Contains(t)) continue;
+            int d = TileManager.Instance.GetDistance(t, wanted);
+            if (d < bestDist) { bestDist = d; best = t; }
+        }
+
+        return best != null;
+    }
+
+
 }

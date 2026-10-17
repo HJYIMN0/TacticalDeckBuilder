@@ -183,7 +183,7 @@ public class AreaManager : GenericSingleton<AreaManager>
         return first != null ? first.Owner : Faction.Neutral;
     }
 
-    public void ApplyBonusesFor(Faction faction, GlobalEnergyManager energy)
+    public void ApplyBonusesFor(Faction faction, IEnergyPool energy)
     {
         foreach (var area in AllAreas())
         {

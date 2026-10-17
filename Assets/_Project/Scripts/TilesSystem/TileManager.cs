@@ -191,4 +191,34 @@ public class TileManager : GenericSingleton<TileManager>
         float toEdge = to.GetEdgeHeight(-dir);
         return Mathf.Abs(fromEdge - toEdge) <= maxStepHeight + 0.001f;
     }
+
+    /// <summary>
+    /// Sostituisce oldTile con newTile nella griglia, mantenendo la stessa Coord.
+    /// Usato da TileTransformCard. Non tocca gli occupanti né il GridMover:
+    /// se ne occupa il chiamante.
+    /// </summary>
+    public void ReplaceTile(Tile oldTile, Tile newTile)
+    {
+        if (oldTile == null || newTile == null) return;
+
+        // ADATTA alla struttura interna. Se usi Dictionary<Vector2Int, Tile>:
+        tiles[oldTile.Coord] = newTile;
+
+        // Se newTile non è ancora indicizzato (perché il prefab non si auto-registra),
+        // registralo qui:
+        // tiles[newTile.Coord] = newTile;
+
+        Debug.Log($"[TileManager] Replace {oldTile.Coord} → {newTile.name}");
+    }
+
+    /// <summary>
+    /// Deregistra una tile dalla griglia. Utile se il prefab nuovo si auto-registra
+    /// in Awake e vuoi solo rimuovere quella vecchia prima del Destroy.
+    /// </summary>
+    public void UnregisterTile(Tile tile)
+    {
+        if (tile == null) return;
+        tiles.Remove(tile.Coord);
+        Debug.Log($"[TileManager] Unregister {tile.Coord}");
+    }
 }

@@ -2,7 +2,7 @@ using System;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class GlobalEnergyManager : GenericSingleton<GlobalEnergyManager>
+public class GlobalEnergyManager : GenericSingleton<GlobalEnergyManager>, IEnergyPool
 {
     public override bool IsDestroyedOnLoad() => true;
     public override bool ShouldDetatchFromParent() => true;

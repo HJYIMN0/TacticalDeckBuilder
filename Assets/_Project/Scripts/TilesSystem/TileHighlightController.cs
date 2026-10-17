@@ -21,6 +21,8 @@ public class TileHighlightController : MonoBehaviour
     readonly List<Tile> highlighted = new List<Tile>();
     Tile lastHovered;
     Tile lastOrigin;
+
+    public void ClearAllHighlights() => ClearHighlights();
     void Awake()
     {
         if (picker == null)

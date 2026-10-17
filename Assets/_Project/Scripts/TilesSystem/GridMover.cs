@@ -136,4 +136,28 @@ public class GridMover : MonoBehaviour
         }
         transform.position = end;
     }
+
+    /// <summary>
+    /// Sposta l'unità istantaneamente su un'altra tile, aggiornando occupant,
+    /// currentTile e transform.position. Usato da effetti che teletrasportano
+    /// (es. TileTransformCard). Non fa animazioni, non tocca le aree.
+    /// </summary>
+    public void TeleportTo(Tile destination)
+    {
+        if (destination == null) return;
+        if (isMoving) return;
+
+        Tile origin = currentTile;
+
+        if (currentTile != null) currentTile.SetOccupant(null);
+        destination.SetOccupant(GetComponent<Unit>());
+        currentTile = destination;
+        transform.position = GetStandPosition(destination);
+
+        if (AreaManager.HasInstance)
+        {
+            AreaManager.Instance.RecountAreasTouching(origin, null);
+            AreaManager.Instance.RecountAreasTouching(currentTile, GetComponent<Unit>());
+        }
+    }
 }

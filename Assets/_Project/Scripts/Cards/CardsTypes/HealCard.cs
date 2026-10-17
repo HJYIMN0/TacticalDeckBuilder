@@ -1,35 +1,34 @@
-// FILE: Assets/_Project/Scripts/Cards/HealCard.cs
-// CLASSE: HealCard
-
 using System.Collections;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Cards/Heal", fileName = "Heal_")]
 public class HealCard : CardData
 {
-    [SerializeField] int healAmount = 5;
-    [SerializeField] int range = 3;
+    [SerializeField] int healAmount = 3;
+    [SerializeField] Faction allowedFaction = Faction.Player;
+
+    // Sempre UnitOnly: nessuna tile, nessun executor separato.
+    public override CardTargeting TargetMode => CardTargeting.UnitOnly;
+
+    public override bool CanBeExecutedBy(Unit unit)
+    {
+        if (unit == null || !unit.IsAlive) return false;
+        return unit.Faction == allowedFaction;
+    }
 
     public override bool IsValidTarget(CardContext ctx)
     {
-        if (ctx.User == null || ctx.TargetTile == null) return false;
-        if (TileManager.Instance == null) return false;
-
-        var target = ctx.TargetUnit;
-        if (target == null) return false;
-        if (target.Faction != ctx.User.Faction) return false;
-        if (!target.IsAlive) return false;
-
-        int dist = TileManager.Instance.GetDistance(ctx.User.Tile, ctx.TargetTile);
-        return dist <= range;
+        // In UnitOnly, ctx.User è l'unità scelta (e TargetTile è la sua tile).
+        return ctx.User != null && ctx.User.IsAlive && CanBeExecutedBy(ctx.User);
     }
 
     public override IEnumerator Play(CardContext ctx)
     {
-        if (ctx.TargetUnit == null || ctx.TargetUnit.Health == null) yield break;
+        var target = ctx.User;
+        if (target == null || !target.IsAlive) yield break;
 
-        ctx.TargetUnit.Health.Heal(healAmount);
-        Debug.Log($"[Heal] {ctx.TargetUnit.name} +{healAmount} HP");
+        Debug.Log($"[Heal] {target.name} +{healAmount}");
+        target.Health.Heal(healAmount);   // richiede AbstractHealthManager.Heal(int)
         yield break;
     }
 }

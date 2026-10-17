@@ -11,24 +11,22 @@ public class UnitSelectorUI : MonoBehaviour
 
     readonly List<UnitButton> buttons = new();
 
-    public void Build(IEnumerable<Unit> units, Unit active)
+    /// <summary>
+    /// Mostra solo le unità che passano il filtro (esecutori o target validi).
+    /// </summary>
+    public void ShowAll(IEnumerable<Unit> units, Func<Unit, bool> validFilter)
     {
         Clear();
         foreach (var u in units)
         {
+            if (validFilter != null && !validFilter(u)) continue;
+
             var b = Instantiate(buttonPrefab, container);
             b.Bind(u);
             var captured = u;
             b.Clicked += _ => UnitSelected?.Invoke(captured);
             buttons.Add(b);
         }
-        SetActive(active);
-    }
-
-    public void SetActive(Unit active)
-    {
-        foreach (var b in buttons)
-            b.SetHighlight(b.Unit == active);
     }
 
     public void Clear()

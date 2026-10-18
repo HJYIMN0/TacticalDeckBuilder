@@ -1,22 +1,24 @@
 using UnityEngine;
 
-/// <summary>
-/// Stato unico della selezione in corso. Nessuna copia in HandView/UI.
-/// </summary>
 public class PlayerTurnState
 {
     public PlayerTurnPhase Phase;
+    public Unit ActiveUnit;     // sempre valorizzata tranne a fine turno
     public CardView Card;
-    public Unit Executor;
-    public Unit TargetUnit;
     public Tile TargetTile;
 
+    /// <summary>Reset della selezione carta, mantiene l'unità attiva.</summary>
     public void Reset()
     {
         Phase = PlayerTurnPhase.Idle;
         Card = null;
-        Executor = null;
-        TargetUnit = null;
         TargetTile = null;
+    }
+
+    /// <summary>Reset totale, usato a fine turno.</summary>
+    public void ResetAll()
+    {
+        Reset();
+        ActiveUnit = null;
     }
 }

@@ -84,7 +84,11 @@ public class TurnManager : GenericSingleton<TurnManager>
 
             foreach (Unit u in units.ToArray())
             {
-                if (u == null || !u.IsAlive || u.Controller == null) continue;
+                if (u == null) continue;
+                if (!u.IsAlive) continue;
+
+                // La fazione va gestita PRIMA del check Controller:
+                // il Player non ha Controller sull'Unit (ce l'ha su PlayerManager).
                 if (!handledFactions.Add(u.Faction)) continue;
 
                 plannedTiles.Clear();
@@ -94,24 +98,23 @@ public class TurnManager : GenericSingleton<TurnManager>
                     if (x != null && x.IsAlive && x.Faction == u.Faction)
                         factionUnits.Add(x);
 
-                // PLAYER: UN SOLO turno di fazione
+                // ---- PLAYER: un turno di fazione ----
                 if (u.Faction == Faction.Player)
                 {
-                    var pc = factionUnits
-                        .Select(fu => fu.Controller)
-                        .OfType<PlayerController>()
-                        .FirstOrDefault();
-
-                    if (pc != null)
+                    var pc = FindAnyObjectByType<PlayerController>();
+                    if (pc == null)
                     {
-                        Debug.Log($"[TurnManager] >>> Turno fazione PLAYER ({factionUnits.Count} unità)");
-                        yield return pc.TakeFactionTurn(factionUnits);
-                        Debug.Log("[TurnManager] <<< Fine turno fazione PLAYER");
+                        Debug.LogError("[TurnManager] Nessun PlayerController in scena");
+                        continue;
                     }
+
+                    Debug.Log($"[TurnManager] >>> Turno fazione PLAYER ({factionUnits.Count} unità)");
+                    yield return pc.TakeFactionTurn(factionUnits);
+                    Debug.Log("[TurnManager] <<< Fine turno fazione PLAYER");
                     continue;
                 }
 
-                // ENEMY: comportamento invariato (un turno per unità)
+                // ---- ENEMY: un turno per unità (invariato) ----
                 foreach (var fu in factionUnits)
                 {
                     if (fu == null || !fu.IsAlive || fu.Controller == null) continue;

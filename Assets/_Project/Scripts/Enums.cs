@@ -14,5 +14,6 @@ public enum PlayerTurnPhase
     SelectingTargetUnit,  // carta UnitOnly: in attesa dell'unità target/esecutrice
     SelectingTile,        // esecutore (o nessuno) scelto, in attesa della tile
     AwaitingConfirm,      // tutto scelto, in attesa di conferma
-    Resolving             // carte in esecuzione
+    Resolving,             // carte in esecuzione
+    CardSelected
 }

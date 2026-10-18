@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 3103313539734132819}
   - component: {fileID: 5264421002538868321}
   m_Layer: 5
-  m_Name: HandView
+  m_Name: Deprecated_HandView
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

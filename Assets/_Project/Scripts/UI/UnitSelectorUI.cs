@@ -34,4 +34,10 @@ public class UnitSelectorUI : MonoBehaviour
         foreach (var b in buttons) if (b != null) Destroy(b.gameObject);
         buttons.Clear();
     }
+
+    public void SetActive(Unit unit)
+    {
+        foreach (var b in buttons)
+            if (b != null) b.SetHighlight(b.Unit == unit);
+    }
 }

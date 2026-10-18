@@ -16,7 +16,6 @@ GameObject:
   - component: {fileID: 4611331628482438433}
   - component: {fileID: 52354804730299561}
   - component: {fileID: 2910959801579923332}
-  - component: {fileID: 1185861417290322246}
   - component: {fileID: 1511428683443657149}
   m_Layer: 0
   m_Name: Unit
@@ -178,28 +177,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PathPreview
   picker: {fileID: 0}
-  mover: {fileID: 2931899876174581796}
   reachableColor: {r: 0, g: 1, b: 0, a: 1}
   unreachableColor: {r: 1, g: 0, b: 0, a: 1}
+  areaColor: {r: 1, g: 0.6, b: 0, a: 1}
   heightOffset: 1
   hardCap: 20
---- !u!114 &1185861417290322246
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1610545314515354311}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a2f84677ef399fb44aa18b435f1353e0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  picker: {fileID: 0}
-  handView: {fileID: 0}
-  pathPreview: {fileID: 2910959801579923332}
-  unitSelector: {fileID: 0}
-  energy: {fileID: 0}
 --- !u!120 &1511428683443657149
 LineRenderer:
   serializedVersion: 3

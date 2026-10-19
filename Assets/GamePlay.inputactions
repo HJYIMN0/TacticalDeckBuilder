@@ -1,0 +1,57 @@
+{
+    "version": 1,
+    "name": "GamePlay",
+    "maps": [
+        {
+            "name": "GamePlay",
+            "id": "73a205b3-efaf-4003-9d74-75f961a0b011",
+            "actions": [
+                {
+                    "name": "Select",
+                    "type": "Button",
+                    "id": "d324a3ca-d68b-469a-b6dd-8dc460a52728",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "Deselect",
+                    "type": "Button",
+                    "id": "1e31a29b-40d2-44cb-ae6c-b6ab4a7c0fe1",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "1dd68ba2-79e8-4e35-865a-cb38536fcd92",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Select",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f3c0f355-619e-4dd6-8b00-eff4eb9db5c4",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Deselect",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

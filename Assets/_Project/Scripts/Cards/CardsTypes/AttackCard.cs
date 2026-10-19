@@ -27,6 +27,8 @@ public class AttackCard : CardData
 
     public override IEnumerator Play(CardContext ctx)
     {
+        if (!TrySpendCost(ctx)) yield break;   // ← valida + paga
+
         Unit target = ctx.TargetUnit;
 
         Vector3 origin = ctx.User.transform.position + Vector3.up * rayHeight;

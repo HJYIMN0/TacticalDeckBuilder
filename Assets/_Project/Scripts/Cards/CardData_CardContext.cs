@@ -33,6 +33,29 @@ public abstract class CardData : ScriptableObject
 
     public abstract bool IsValidTarget(CardContext ctx);
     public abstract IEnumerator Play(CardContext ctx);
+
+    /// <summary>Può la riserva pagare il costo?</summary>
+    public bool CanAfford(CardContext ctx)
+        => ctx.Energy != null && ctx.Energy.CanSpend(cost);
+
+    /// <summary>Validazione completa: energia + target.</summary>
+    public bool CanPlay(CardContext ctx)
+        => CanAfford(ctx) && IsValidTarget(ctx);
+
+    /// <summary>
+    /// Valida e, se tutto ok, spende il costo.
+    /// Ritorna true se la carta può procedere con l'effetto.
+    /// Da chiamare come PRIMA riga di Play():
+    ///     if (!TrySpendCost(ctx)) yield break;
+    ///
+    /// Override se una carta ha bisogno di logica di costo
+    /// diversa (costo variabile, sconto, rimborso, ecc.).
+    /// </summary>
+    protected virtual bool TrySpendCost(CardContext ctx)
+    {
+        if (!CanPlay(ctx)) return false;
+        return ctx.Energy.Spend(cost);
+    }
 }
 
 public struct CardContext

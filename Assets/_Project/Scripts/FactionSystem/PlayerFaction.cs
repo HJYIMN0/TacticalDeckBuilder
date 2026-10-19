@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Stato di fazione Player: deck condiviso, draw/turn, energia condivisa.

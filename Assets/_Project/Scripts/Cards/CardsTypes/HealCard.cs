@@ -24,6 +24,8 @@ public class HealCard : CardData
 
     public override IEnumerator Play(CardContext ctx)
     {
+        if (!TrySpendCost(ctx)) yield break;   // ← valida + paga
+
         var target = ctx.User;
         if (target == null || !target.IsAlive) yield break;
 

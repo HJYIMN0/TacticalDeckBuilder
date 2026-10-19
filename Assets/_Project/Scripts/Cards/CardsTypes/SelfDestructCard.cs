@@ -20,6 +20,8 @@ public class SelfDestructCard : CardData
 
     public override IEnumerator Play(CardContext ctx)
     {
+        if (!TrySpendCost(ctx)) yield break;   // ← valida + paga
+
         var center = ctx.User.Tile;
         if (center == null) yield break;
 

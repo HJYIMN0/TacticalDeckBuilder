@@ -19,6 +19,8 @@ public class TileTransformCard : CardData
 
     public override IEnumerator Play(CardContext ctx)
     {
+        if (!TrySpendCost(ctx)) yield break;   // ← valida + paga
+
         var oldTile = ctx.TargetTile;
         if (oldTile == null || newTilePrefab == null) yield break;
 

@@ -21,8 +21,8 @@ public class PlayerController : AbstractUnitController
     [SerializeField] bool autoConfirmOnSelection = true;
 
     [Header("Input")]
-    [Tooltip("Azione che annulla la selezione della carta corrente (es. Escape). " +
-         "Abilitata solo durante il turno Player.")]
+    [Tooltip("Reference all'azione che annulla la selezione della carta. " +
+             "Assegnare dall'Inspector trascinando l'azione dall'Input Actions editor.")]
     [SerializeField] InputActionReference cancelSelection;
 
     public event Action<CardView> OnCardSelected;
@@ -75,7 +75,6 @@ public class PlayerController : AbstractUnitController
             handView.SpawnAt(c, Vector2.down * 600f);
         yield return handView.AnimateAllToHome();
 
-        // Bottoni SEMPRE visibili, unità di default = prima
         unitSelector.ShowAll(factionUnits, u => u != null && u.IsAlive);
         SetActiveUnit(factionUnits[0]);
 
@@ -84,11 +83,7 @@ public class PlayerController : AbstractUnitController
         unitSelector.UnitSelected += HandleUnitSelected;
         TurnManager.Instance.EndTurnRequested += HandleEndTurnRequested;
 
-        if (cancelSelection != null && cancelSelection.action != null)
-        {
-            cancelSelection.action.Enable();
-            cancelSelection.action.performed += HandleCancelInput;
-        }
+        EnableCancelInput(true);
 
         while (!endTurnRequested)
         {
@@ -105,11 +100,7 @@ public class PlayerController : AbstractUnitController
         unitSelector.UnitSelected -= HandleUnitSelected;
         TurnManager.Instance.EndTurnRequested -= HandleEndTurnRequested;
 
-        if (cancelSelection != null && cancelSelection.action != null)
-        {
-            cancelSelection.action.performed -= HandleCancelInput;
-            cancelSelection.action.Disable();
-        }
+        EnableCancelInput(false);
 
         CancelSelection();
         if (pathPreview != null) pathPreview.ClearAll();
@@ -128,13 +119,35 @@ public class PlayerController : AbstractUnitController
 
     void HandleEndTurnRequested() => endTurnRequested = true;
 
+    // ===================================================================
+    // Input cancel (abilitato/disabilitato con il turno, mai hardcoded)
+    // ===================================================================
+    void EnableCancelInput(bool enable)
+    {
+        if (cancelSelection == null || cancelSelection.action == null)
+        {
+            if (enable)
+                Debug.LogWarning("[Player] cancelSelection non assegnata in Inspector: " +
+                                 "il tasto cancel non funzionerà", this);
+            return;
+        }
+
+        if (enable)
+        {
+            cancelSelection.action.Enable();
+            cancelSelection.action.performed += HandleCancelInput;
+        }
+        else
+        {
+            cancelSelection.action.performed -= HandleCancelInput;
+            cancelSelection.action.Disable();
+        }
+    }
+
     void HandleCancelInput(InputAction.CallbackContext ctx)
     {
-        // Niente da annullare in Idle o Resolving
         if (state.Phase != PlayerTurnPhase.CardSelected) return;
         if (state.Card == null) return;
-
-        Debug.Log("[Player] Cancel selection (input)");
         CancelSelection();
     }
 
@@ -148,8 +161,11 @@ public class PlayerController : AbstractUnitController
 
         unitSelector.SetActive(unit);
         if (pathPreview != null) pathPreview.SetUnit(unit);
-        if (tileHighlight != null && unit.Mover != null)
-            tileHighlight.SetActiveMover(unit.Mover);
+        if (tileHighlight != null)
+        {
+            if (unit.Mover != null) tileHighlight.SetActiveMover(unit.Mover);
+            tileHighlight.SetSuspended(true);
+        }
 
         OnUnitSelected?.Invoke(unit);
     }
@@ -171,18 +187,15 @@ public class PlayerController : AbstractUnitController
                 switch (state.Card.Card.TargetMode)
                 {
                     case CardTargeting.ExecutorAndTile:
-                        // cambia esecutore, tile highlight si aggiorna
                         SetActiveUnit(unit);
                         break;
 
                     case CardTargeting.UnitOnly:
-                        // unità = target → esegue
                         state.TargetTile = unit.Tile;
                         pendingResolution = true;
                         break;
 
                     case CardTargeting.TileOnly:
-                        // target è tile, l'unità non conta
                         SetActiveUnit(unit);
                         break;
                 }
@@ -198,13 +211,7 @@ public class PlayerController : AbstractUnitController
         if (view == null || view.Card == null) return;
         if (state.Phase == PlayerTurnPhase.Resolving) return;
 
-        // Stessa carta → deseleziona
-        if (state.Card == view)
-        {
-            CancelSelection();
-            return;
-        }
-
+        if (state.Card == view) { CancelSelection(); return; }
         if (state.Card != null) state.Card.Deselect();
 
         state.Card = view;
@@ -213,6 +220,7 @@ public class PlayerController : AbstractUnitController
         view.Select();
 
         if (pathPreview != null) pathPreview.SetCard(view.Card);
+        if (tileHighlight != null) tileHighlight.SetSuspended(false);
         OnCardSelected?.Invoke(view);
     }
 
@@ -224,7 +232,6 @@ public class PlayerController : AbstractUnitController
         if (tile == null) return;
         if (state.Phase == PlayerTurnPhase.Resolving) return;
 
-        // Idle: click su tile con unità Player → cambia active unit
         if (state.Phase == PlayerTurnPhase.Idle)
         {
             var occ = tile.Occupant;
@@ -236,7 +243,6 @@ public class PlayerController : AbstractUnitController
             return;
         }
 
-        // CardSelected
         if (state.Phase != PlayerTurnPhase.CardSelected || state.Card == null) return;
 
         var mode = state.Card.Card.TargetMode;
@@ -253,7 +259,6 @@ public class PlayerController : AbstractUnitController
             return;
         }
 
-        // Tile-targeting (ExecutorAndTile / TileOnly)
         state.TargetTile = tile;
         OnTileSelected?.Invoke(tile);
 
@@ -275,8 +280,12 @@ public class PlayerController : AbstractUnitController
     {
         if (state.Card != null) state.Card.Deselect();
         if (pathPreview != null) pathPreview.ClearCard();
-        if (tileHighlight != null) tileHighlight.ClearAllHighlights();
-        state.Reset();   // mantiene ActiveUnit
+        if (tileHighlight != null)
+        {
+            tileHighlight.ClearAllHighlights();
+            tileHighlight.SetSuspended(true);
+        }
+        state.Reset();
         OnCancel?.Invoke();
     }
 
@@ -315,7 +324,7 @@ public class PlayerController : AbstractUnitController
             yield break;
         }
 
-        faction.Energy.Spend(card.Card.cost);
+        // Il costo viene pagato da CardData.TrySpendCost() dentro Play(). Non spendere qui.
         if (pathPreview != null) pathPreview.ClearCard();
         if (tileHighlight != null) tileHighlight.ClearAllHighlights();
         state.Phase = PlayerTurnPhase.Resolving;
@@ -325,7 +334,8 @@ public class PlayerController : AbstractUnitController
         faction.Deck.Discard(card.Card);
         yield return handView.AnimateDiscard(card);
 
-        state.Reset();   // mantiene ActiveUnit, si torna a Idle
+        state.Reset();
+        if (tileHighlight != null) tileHighlight.SetSuspended(true);
         OnConfirm?.Invoke();
     }
 }

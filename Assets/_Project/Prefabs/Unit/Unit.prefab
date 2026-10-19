@@ -133,7 +133,7 @@ MonoBehaviour:
   tileMask:
     serializedVersion: 2
     m_Bits: 8
-  maxDistancedFromStartTile: 0
+  maxDistanceFromStartTile: 10.5
 --- !u!114 &4611331628482438433
 MonoBehaviour:
   m_ObjectHideFlags: 0

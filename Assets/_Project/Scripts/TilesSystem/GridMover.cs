@@ -6,7 +6,7 @@ public class GridMover : MonoBehaviour
 {
     [SerializeField] float stepDuration = 0.2f;
     [SerializeField] LayerMask tileMask;
-    [SerializeField] float maxDistancedFromStartTile;
+    [SerializeField][Min(0.1f)] float maxDistanceFromStartTile = 10.5f;
 
     float groundOffset; // quanto il pivot dell'unità sta sopra la superficie della tile (misurato dal raycast)
 
@@ -38,7 +38,7 @@ public class GridMover : MonoBehaviour
         if (initialized) return;
         initialized = true;
 
-        if (Physics.Raycast(transform.position + Vector3.up * maxDistancedFromStartTile, Vector3.down, out RaycastHit hit, 10.5f, tileMask))
+        if (Physics.Raycast(transform.position + Vector3.up, Vector3.down, out RaycastHit hit, maxDistanceFromStartTile, tileMask))
         {
             startTile = hit.collider.GetComponentInParent<Tile>(); // il raycast restituisce un bool: la Tile si ricava dal collider colpito
             groundOffset = transform.position.y - hit.point.y;     // la Y non è più fissa: si ricorda l'altezza dal suolo
@@ -160,4 +160,39 @@ public class GridMover : MonoBehaviour
             AreaManager.Instance.RecountAreasTouching(currentTile, GetComponent<Unit>());
         }
     }
+
+    private void OnDrawGizmos()
+    {
+        // Punto di partenza del raycast
+        Vector3 origin = transform.position + Vector3.up;
+
+        // Disegno il raggio
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(origin, origin + Vector3.down * maxDistanceFromStartTile);
+
+        // Piccola sfera all'origine
+        Gizmos.DrawWireSphere(origin, 0.1f);
+
+        // Se siamo in Play Mode e la tile è stata trovata, disegno anche il punto di impatto
+        if (Application.isPlaying && startTile != null)
+        {
+            // Punto di impatto del raycast
+            Vector3 hitPoint = startTile.transform.position;
+            hitPoint.y = transform.position.y - groundOffset;
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(hitPoint, 0.15f);
+
+            // Posizione di stand (quella usata dal mover)
+            Vector3 standPos = GetStandPosition(startTile);
+
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireSphere(standPos, 0.12f);
+
+            // Linea tra hitPoint e standPos
+            Gizmos.DrawLine(hitPoint, standPos);
+        }
+    }
+
+
 }

@@ -15,6 +15,9 @@ public class TileHighlightController : MonoBehaviour
     [Header("Distanza massima (in tile)")]
     [SerializeField, Min(1)] int movementRange = 3;
 
+    [Header("Stato")]
+    [SerializeField] bool suspended = false;
+
     TileHighlightProfile activeProfile;
     int activeRange;
 
@@ -46,6 +49,9 @@ public class TileHighlightController : MonoBehaviour
 
     void Update()
     {
+
+        if (suspended) { ClearHighlights(); return; }
+        if (activeMover == null) { ClearHighlights(); return; }
         // senza unità attiva non c'è un punto di partenza: spengo tutto
         if (activeMover == null)
         {
@@ -159,5 +165,10 @@ public class TileHighlightController : MonoBehaviour
             if (t != null && t.Highlight != null) t.Highlight.Hide();
         }
         highlighted.Clear();
+    }
+    public void SetSuspended(bool value)
+    {
+        suspended = value;
+        if (value) ClearHighlights();
     }
 }

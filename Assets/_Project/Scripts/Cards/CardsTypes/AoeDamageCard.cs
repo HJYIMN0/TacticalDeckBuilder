@@ -31,6 +31,8 @@ public class AoeDamageCard : CardData
 
     public override IEnumerator Play(CardContext ctx)
     {
+        if (!TrySpendCost(ctx)) yield break;   // ← valida + paga
+
         foreach (var t in GetAreaTiles(ctx.TargetTile))
         {
             if (t == null) continue;

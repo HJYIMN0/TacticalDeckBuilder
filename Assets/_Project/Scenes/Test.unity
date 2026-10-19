@@ -133,7 +133,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1039919307480156781, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.17
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 1039919307480156781, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_LocalPosition.z
@@ -170,6 +170,10 @@ PrefabInstance:
     - target: {fileID: 1610545314515354311, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_Name
       value: Unit
+      objectReference: {fileID: 0}
+    - target: {fileID: 2931899876174581796, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
+      propertyPath: maxDistancedFromStartTile
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -317,11 +321,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1039919307480156781, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.17
+      value: -0.03
       objectReference: {fileID: 0}
     - target: {fileID: 1039919307480156781, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 50.3
+      value: 47.75
       objectReference: {fileID: 0}
     - target: {fileID: 1039919307480156781, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_LocalRotation.w
@@ -354,6 +358,10 @@ PrefabInstance:
     - target: {fileID: 1610545314515354311, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
       propertyPath: m_Name
       value: Unit (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 2931899876174581796, guid: a7ffafb1e3c98374fb50e1073688361b, type: 3}
+      propertyPath: maxDistanceFromStartTile
+      value: 10.5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -408,6 +416,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3535063473143479556, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
+      propertyPath: drawPerTurn
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3535063473143479556, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
+      propertyPath: energyPerTurn
+      value: 20
+      objectReference: {fileID: 0}
     - target: {fileID: 6960176742247991904, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
@@ -415,18 +431,6 @@ PrefabInstance:
     - target: {fileID: 7778857805044737717, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
       propertyPath: m_Name
       value: Scene
-      objectReference: {fileID: 0}
-    - target: {fileID: 8614046372342134718, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
-      propertyPath: m_SortingOrder
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 8661389841651802443, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -29.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8661389841651802443, guid: 17a47dbf77d95e54a83cadd91224eee6, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -6.6399994
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

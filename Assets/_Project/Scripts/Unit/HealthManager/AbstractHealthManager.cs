@@ -4,20 +4,62 @@ using UnityEngine;
 public abstract class AbstractHealthManager : MonoBehaviour
 {
     [SerializeField] int maxHp = 10;
+    [SerializeField] int maxShield = 0;
+    [SerializeField] bool isShieldRenewable = false;
+
     int current;
+    int currentShield;
 
     public int Max => maxHp;
     public int Current => current;
+    public int MaxShield => maxShield;
+    public int CurrentShield => currentShield;
+    public bool IsShieldRenewable => isShieldRenewable;
     public bool IsAlive => current > 0;
 
-    /// <summary>Notifica quando questa entità muore. Passa il killer (può essere null).</summary>
     public event Action<AbstractHealthManager, Unit> OnDied;
 
-    void Awake() { current = maxHp; }
+    void Awake()
+    {
+        current = maxHp;
+        currentShield = maxShield;
+    }
+
+    public void Configure(int hp, int shield, bool renewable)
+    {
+        maxHp = hp;
+        maxShield = shield;
+        isShieldRenewable = renewable;
+        current = maxHp;
+        currentShield = maxShield;
+    }
+
+    public void OnTurnStart()
+    {
+        if (isShieldRenewable)
+            currentShield = maxShield;
+    }
+
+    public void AddShield(int amount)
+    {
+        if (amount <= 0) return;
+        currentShield = Mathf.Min(maxShield, currentShield + amount);
+        Debug.Log($"[Health] {name} scudo +{amount} -> {currentShield}/{maxShield}");
+    }
 
     public void TakeDamage(int amount, Unit source = null)
     {
         if (!IsAlive) return;
+
+        if (currentShield > 0)
+        {
+            int absorbed = Mathf.Min(currentShield, amount);
+            currentShield -= absorbed;
+            amount -= absorbed;
+            Debug.Log($"[Health] {name} scudo assorbe {absorbed} -> scudo {currentShield}/{maxShield}");
+        }
+
+        if (amount <= 0) return;
 
         current = Mathf.Max(0, current - amount);
         Debug.Log($"[Health] {name} subisce {amount} -> {current}/{maxHp}");

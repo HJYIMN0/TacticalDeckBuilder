@@ -53,7 +53,8 @@ public class TileManager : GenericSingleton<TileManager>
     // BFS su 4 direzioni. Non richiede che start sia walkable (sopra c'è l'unità stessa).
     // Il goal è raggiungibile solo se è una tile walkable.
     // `mover`: se passato, ignora le tile occupate da alleati del mover (ma non il goal).
-    public bool TryGetPath(Tile start, Tile goal, int maxDistance, out List<Tile> path, Unit mover = null)
+    public bool TryGetPath(Tile start, Tile goal, int maxDistance, out List<Tile> path,
+    Unit mover = null, bool canPassThroughEnemies = false)
     {
         path = null;
         if (start == null || goal == null) return false;
@@ -80,16 +81,20 @@ public class TileManager : GenericSingleton<TileManager>
             foreach (Tile neighbor in GetNeighbors(current))
             {
                 if (neighbor == null) continue;
-                if (!neighbor.IsWalkable) continue;
+                if (!neighbor.IsWalkable && neighbor != goal) continue;
                 if (!CanStep(current, neighbor)) continue;
                 if (cameFrom.ContainsKey(neighbor)) continue;
 
-                // Blocca solo se occupata da un ALLEATO del mover, e non è il goal
-                if (neighbor != goal
-                    && mover != null
-                    && neighbor.Occupant != null
-                    && neighbor.Occupant.Faction == mover.Faction)
-                    continue;
+                // Goal occupato: mai valido (non può fermarsi su un'unità)
+                if (neighbor == goal && neighbor.Occupant != null) continue;
+
+                if (neighbor.Occupant != null)
+                {
+                    // Alleati bloccano sempre
+                    if (mover != null && neighbor.Occupant.Faction == mover.Faction) continue;
+                    // Nemici: bloccano solo se non si può attraversare
+                    if (!canPassThroughEnemies) continue;
+                }
 
                 int nd = dist[current] + 1;
                 if (nd > maxDistance) continue;
@@ -106,6 +111,33 @@ public class TileManager : GenericSingleton<TileManager>
         for (Tile t = goal; t != null; t = cameFrom[t]) path.Add(t);
         path.Reverse();
         return true;
+    }
+
+    /// <summary>BFS che ignora ostacoli e occupanti: usato dal salto.</summary>
+    public List<Tile> GetTilesInRangeIgnoringObstacles(Tile start, int maxDistance)
+    {
+        var result = new List<Tile>();
+        if (start == null) return result;
+
+        var visited = new HashSet<Tile>();
+        var queue = new Queue<(Tile tile, int dist)>();
+        queue.Enqueue((start, 0));
+        visited.Add(start);
+
+        while (queue.Count > 0)
+        {
+            var (current, dist) = queue.Dequeue();
+            result.Add(current);
+            if (dist >= maxDistance) continue;
+
+            foreach (Tile n in GetNeighbors(current))
+            {
+                if (n == null || visited.Contains(n)) continue;
+                visited.Add(n);
+                queue.Enqueue((n, dist + 1));
+            }
+        }
+        return result;
     }
 
     public List<Tile> GetReachableTiles(Tile start, int maxDistance, Unit mover = null)
@@ -220,5 +252,40 @@ public class TileManager : GenericSingleton<TileManager>
         if (tile == null) return;
         tiles.Remove(tile.Coord);
         Debug.Log($"[TileManager] Unregister {tile.Coord}");
+    }
+
+    /// <summary>
+    /// Tile che approssimano la linea retta start→goal (DDA).
+    /// Include start e goal. Usato dall'anteprima del salto.
+    /// Non filtra ostacoli né occupanti: mostra esattamente ciò che il salto attraversa.
+    /// </summary>
+    public List<Tile> GetLineTiles(Tile start, Tile goal)
+    {
+        var result = new List<Tile>();
+        if (start == null || goal == null) return result;
+
+        int x0 = start.Coord.x, y0 = start.Coord.y;
+        int x1 = goal.Coord.x, y1 = goal.Coord.y;
+
+        int dx = Mathf.Abs(x1 - x0);
+        int dy = Mathf.Abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx - dy;
+
+        int guard = dx + dy + 2;
+        while (guard-- > 0)
+        {
+            if (TryGetTile(new Vector2Int(x0, y0), out Tile t) && t != null)
+                result.Add(t);
+
+            if (x0 == x1 && y0 == y1) break;
+
+            int e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+
+        return result;
     }
 }

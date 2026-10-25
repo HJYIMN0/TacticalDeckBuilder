@@ -117,10 +117,9 @@ public class TurnManager : GenericSingleton<TurnManager>
                 // ---- ENEMY: un turno per unità (invariato) ----
                 foreach (var fu in factionUnits)
                 {
-                    if (fu == null || !fu.IsAlive || fu.Controller == null) continue;
-                    Debug.Log($"[TurnManager] >>> Turno di {fu.name} ({fu.Faction})");
-                    yield return fu.Controller.TakeTurn(fu);
-                    Debug.Log($"[TurnManager] <<< Fine turno di {fu.name}");
+                    if (fu == null || !fu.IsAlive) continue;
+                    fu.Health.OnTurnStart();
+                    yield return fu.RunTurnStartAbilities();
                 }
             }
 

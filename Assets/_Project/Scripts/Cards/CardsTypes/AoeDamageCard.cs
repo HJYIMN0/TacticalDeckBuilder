@@ -5,7 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Cards/AoE Damage", fileName = "AoE_")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Cards/AoE Damage", fileName = "AoE_")]
 public class AoeDamageCard : CardData
 {
     [SerializeField] int damage = 2;

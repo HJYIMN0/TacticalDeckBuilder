@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "HighlightProfile", menuName = "Tiles/Highlight Profile")]
+[CreateAssetMenu(fileName = "HighlightProfile", menuName = "ScriptableObjects/Tiles/Highlight Profile")]
 public class TileHighlightProfile : ScriptableObject
 {
     [Header("Tile selezionata")]

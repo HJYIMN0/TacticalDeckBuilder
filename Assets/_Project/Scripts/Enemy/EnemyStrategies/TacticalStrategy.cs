@@ -5,7 +5,7 @@ using UnityEngine;
 /// Bilancia attacco/movimento verso il player e verso gli objective in base a pesi
 /// configurabili. Utile per nemici "intelligenti" che decidono cosa conviene.
 /// </summary>
-[CreateAssetMenu(menuName = "Enemy AI/Tactical", fileName = "AI_Tactical")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Enemy/AIType/Tactical", fileName = "AI_Tactical")]
 public class TacticalStrategy : EnemyStrategy
 {
     [Header("Pesi globali")]

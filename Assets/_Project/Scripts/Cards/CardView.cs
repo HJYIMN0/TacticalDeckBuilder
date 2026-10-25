@@ -8,6 +8,8 @@ public class CardView : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] Image artwork;
     [SerializeField] TMP_Text label;
+    [SerializeField] private TextMeshProUGUI cardCostText;
+    [SerializeField] private TextMeshProUGUI cardDescriptionText;
     [SerializeField] RectTransform rect;
     public RectTransform Rect => rect;
     public Vector2 HomePosition => homePosition;
@@ -28,6 +30,8 @@ public class CardView : MonoBehaviour, IPointerClickHandler
         Card = card;
         if (label != null) label.text = card.cardName;
         if (artwork != null && card.artwork != null) artwork.sprite = card.artwork;
+        if (cardCostText != null) cardCostText.text = $"Cost: {card.cost}";
+        if (cardDescriptionText != null) cardDescriptionText.text = card.Description;
     }
 
     public void SetHome(Vector2 pos) => homePosition = pos;

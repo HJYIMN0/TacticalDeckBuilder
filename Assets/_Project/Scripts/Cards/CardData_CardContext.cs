@@ -16,6 +16,8 @@ public abstract class CardData : ScriptableObject
     public string cardName;
     public int cost = 1;
     public Sprite artwork;
+    public string description;
+    public virtual string Description => description;
 
     [Tooltip("Se true, una volta usata o scartata non si rimescola mai più")]
     public bool isUnique = false;
@@ -35,7 +37,7 @@ public abstract class CardData : ScriptableObject
     public abstract IEnumerator Play(CardContext ctx);
 
     /// <summary>Può la riserva pagare il costo?</summary>
-    public bool CanAfford(CardContext ctx)
+    public virtual bool CanAfford(CardContext ctx)
         => ctx.Energy != null && ctx.Energy.CanSpend(cost);
 
     /// <summary>Validazione completa: energia + target.</summary>

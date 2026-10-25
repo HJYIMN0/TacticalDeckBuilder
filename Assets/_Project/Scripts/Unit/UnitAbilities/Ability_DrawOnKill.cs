@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Abilities/Draw On Kill", fileName = "Ability_DrawOnKill")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Units/UnitsAbilities/Draw On Kill", fileName = "Ability_DrawOnKill")]
 public class Ability_DrawOnKill : UnitAbility
 {
     [SerializeField] int cardsToDraw = 1;

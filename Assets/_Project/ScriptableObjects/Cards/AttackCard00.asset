@@ -15,6 +15,9 @@ MonoBehaviour:
   cardName: Carta attacco
   cost: 1
   artwork: {fileID: 0}
+  description: 
+  isUnique: 0
+  targeting: 0
   maxDistance: 1
   damage: 3
   blockingMask:

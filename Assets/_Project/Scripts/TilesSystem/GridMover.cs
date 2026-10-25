@@ -71,7 +71,9 @@ public class GridMover : MonoBehaviour
         if (isMoving) yield break;
         if (destination == CurrentTile) yield break; // [MODIFICA] passa dalla proprietà
         Unit self = GetComponent<Unit>();
-        if (!TileManager.Instance.TryGetPath(CurrentTile, destination, maxDistance, out var path, self)) // [MODIFICA] idem
+        bool trample = self != null && self.HasAbility<TrampleAbility>();
+        
+        if (!TileManager.Instance.TryGetPath(CurrentTile, destination, maxDistance, out var path, self, trample))
         {
             Debug.Log($"[GridMover] Nessun percorso verso {destination.Coord} entro {maxDistance}");
             yield break;
@@ -89,10 +91,15 @@ public class GridMover : MonoBehaviour
         for (int i = 1; i < path.Count; i++)
         {
             Tile next = path[i];
+            Unit victim = next.Occupant;
+            if (victim != null && victim.Faction != unit.Faction && unit.HasAbility<TrampleAbility>())
+            {
+                var trample = unit.GetAbility<TrampleAbility>();
+                victim.Health.TakeDamage(trample.damage, unit);
+            }
 
             currentTile.SetOccupant(null);
             next.SetOccupant(unit);
-
             yield return StepTo(next);
             currentTile = next;
         }
@@ -191,6 +198,80 @@ public class GridMover : MonoBehaviour
 
             // Linea tra hitPoint e standPos
             Gizmos.DrawLine(hitPoint, standPos);
+        }
+    }
+
+    public IEnumerator JumpTo(Tile destination)
+    {
+        if (destination == null || isMoving) yield break;
+        if (destination == CurrentTile) yield break;
+        if (destination.Occupant != null) yield break; // non può atterrare su un'unità
+        if (!destination.IsWalkable) yield break;      // non può atterrare su un ostacolo
+
+        isMoving = true;
+        Unit unit = GetComponent<Unit>();
+        Tile origin = CurrentTile;
+
+        origin.SetOccupant(null);
+        destination.SetOccupant(unit);
+
+        Vector3 start = transform.position;
+        Vector3 end = GetStandPosition(destination);
+
+        // Arco proporzionale alla lunghezza del salto, così salti lunghi
+        // hanno un'arco visibilmente alto sopra l'ostacolo.
+        int jumpDist = TileManager.Instance.GetDistance(origin, destination);
+        float baseDuration = 0.2f;
+        float duration = baseDuration + jumpDist * 0.05f;
+        float height = 0.6f + jumpDist * 0.35f;
+
+        for (float t = 0f; t < 1f; t += Time.deltaTime / duration)
+        {
+            Vector3 pos = Vector3.Lerp(start, end, t);
+            pos.y += Mathf.Sin(t * Mathf.PI) * height;
+            transform.position = pos;
+            yield return null;
+        }
+        transform.position = end;
+        currentTile = destination;
+        isMoving = false;
+
+        if (AreaManager.HasInstance)
+        {
+            AreaManager.Instance.RecountAreasTouching(origin);
+            AreaManager.Instance.RecountAreasTouching(currentTile);
+        }
+    }
+
+    public IEnumerator ForceMoveTo(Tile destination)
+    {
+        if (destination == null || isMoving) yield break;
+        if (destination == CurrentTile) yield break;
+
+        isMoving = true;
+        Unit unit = GetComponent<Unit>();
+        Tile origin = CurrentTile;
+
+        origin.SetOccupant(null);
+        destination.SetOccupant(unit);
+
+        Vector3 start = transform.position;
+        Vector3 end = GetStandPosition(destination);
+        float duration = 0.2f;
+
+        for (float t = 0f; t < 1f; t += Time.deltaTime / duration)
+        {
+            transform.position = Vector3.Lerp(start, end, t);
+            yield return null;
+        }
+        transform.position = end;
+        currentTile = destination;
+        isMoving = false;
+
+        if (AreaManager.HasInstance)
+        {
+            AreaManager.Instance.RecountAreasTouching(origin);
+            AreaManager.Instance.RecountAreasTouching(currentTile);
         }
     }
 

@@ -10,24 +10,22 @@ public class PathPreview : MonoBehaviour
     [Header("Colors")]
     [SerializeField] Color reachableColor = Color.green;
     [SerializeField] Color unreachableColor = Color.red;
-    [SerializeField] Color areaColor = new Color(1f, 0.6f, 0f, 1f); // arancione per AoE
+    [SerializeField] Color areaColor = new Color(1f, 0.6f, 0f, 1f);
     [SerializeField] float heightOffset = 0.2f;
 
     [Header("Fallback")]
-    [Tooltip("Se un path non è calcolabile entro maxDistance, prova fino a questo limite per disegnarlo in rosso.")]
     [SerializeField] int hardCap = 20;
 
     LineRenderer line;
     Tile lastHovered;
     CardData currentCard;
-    Unit executor;        // esecutore corrente (null per TileOnly)
-    Unit forcedTarget;    // UnitOnly: unità target già scelta
+    Unit executor;
+    Unit forcedTarget;
 
     // -------------------------------------------------------------------
-    // API pubblica — chiamata da PlayerController
+    // API pubblica
     // -------------------------------------------------------------------
 
-    /// <summary>Esecutore scelto (o null per TileOnly).</summary>
     public void SetUnit(Unit unit)
     {
         executor = unit;
@@ -35,7 +33,6 @@ public class PathPreview : MonoBehaviour
         Hide();
     }
 
-    /// <summary>Carta selezionata. Guida il tipo di preview mostrata.</summary>
     public void SetCard(CardData card)
     {
         currentCard = card;
@@ -43,7 +40,6 @@ public class PathPreview : MonoBehaviour
         Hide();
     }
 
-    /// <summary>UnitOnly: l'unità target è già stata scelta — mostra il marker dedicato.</summary>
     public void SetTargetUnit(Unit unit)
     {
         forcedTarget = unit;
@@ -52,7 +48,6 @@ public class PathPreview : MonoBehaviour
         if (unit != null) ShowUnitTarget(unit);
     }
 
-    /// <summary>Deseleziona la carta (ma conserva l'esecutore).</summary>
     public void ClearCard()
     {
         currentCard = null;
@@ -60,13 +55,18 @@ public class PathPreview : MonoBehaviour
         Hide();
     }
 
-    /// <summary>Reset completo — chiamato a fine turno.</summary>
     public void ClearAll()
     {
         currentCard = null;
         executor = null;
         forcedTarget = null;
         lastHovered = null;
+        Hide();
+    }
+
+    public void ClearTargetUnit()
+    {
+        forcedTarget = null;
         Hide();
     }
 
@@ -85,7 +85,6 @@ public class PathPreview : MonoBehaviour
     {
         if (picker == null || currentCard == null) { Hide(); return; }
 
-        // UnitOnly: nessun hover, mostriamo solo il marker del target forzato.
         if (currentCard.TargetMode == CardTargeting.UnitOnly)
         {
             if (forcedTarget != null) ShowUnitTarget(forcedTarget);
@@ -97,6 +96,7 @@ public class PathPreview : MonoBehaviour
         if (hovered == null) { Hide(); return; }
         if (hovered == lastHovered) return;
         lastHovered = hovered;
+
         Show(hovered);
     }
 
@@ -116,10 +116,10 @@ public class PathPreview : MonoBehaviour
                 if (executor == null || executor.Mover == null) { Hide(); return; }
                 var mover = executor.Mover;
                 if (mover.IsMoving || mover.CurrentTile == null) { Hide(); return; }
-                if (destination == mover.CurrentTile) { Hide(); lastHovered = destination; return; }
+                if (destination == mover.CurrentTile) { Hide(); return; }
 
                 if (currentCard is MovementCard m) ShowMovement(mover, destination, m);
-                else if (currentCard is AttackCard a) ShowAttack(mover, destination, a);
+                else if (currentCard is AbstractAttackCard a) ShowAttack(mover, destination, a);
                 else if (currentCard is AoeDamageCard e) ShowAoe(mover, destination, e);
                 else if (currentCard is SelfDestructCard s) ShowSelfDestruct(mover, s);
                 else line.positionCount = 0;
@@ -137,11 +137,36 @@ public class PathPreview : MonoBehaviour
 
     void ShowMovement(GridMover mover, Tile destination, MovementCard move)
     {
-        if (TileManager.Instance.TryGetPath(mover.CurrentTile, destination, move.maxDistance, out var path))
+        Unit u = executor;
+
+        // --- CASO JUMP: linea retta, ignora ostacoli e occupanti intermedi ---
+        var jump = u != null ? u.GetAbility<JumpAbility>() : null;
+        if (jump != null)
+        {
+            var straight = TileManager.Instance.GetLineTiles(mover.CurrentTile, destination);
+            if (straight.Count < 2) { Hide(); return; }
+
+            int range = Mathf.Max(1, Mathf.RoundToInt(move.maxDistance * jump.rangeMultiplier));
+            int dist = TileManager.Instance.GetDistance(mover.CurrentTile, destination);
+            bool inRange = dist <= range;
+
+            // Target non può essere occupato o ostacolo: colora rosso se invalido.
+            bool landable = destination.IsWalkable && destination.Occupant == null;
+
+            DrawPath(straight, (inRange && landable) ? reachableColor : unreachableColor);
+            return;
+        }
+
+        // --- CASO WALK (con eventuale trample) ---
+        bool trample = u != null && u.HasAbility<TrampleAbility>();
+
+        if (TileManager.Instance.TryGetPath(
+                mover.CurrentTile, destination, move.maxDistance, out var path, u, trample))
         {
             DrawPath(path, reachableColor);
         }
-        else if (TileManager.Instance.TryGetPath(mover.CurrentTile, destination, hardCap, out var full))
+        else if (TileManager.Instance.TryGetPath(
+                mover.CurrentTile, destination, hardCap, out var full, u, trample))
         {
             DrawPath(full, unreachableColor);
         }
@@ -151,7 +176,7 @@ public class PathPreview : MonoBehaviour
         }
     }
 
-    void ShowAttack(GridMover mover, Tile destination, AttackCard attack)
+    void ShowAttack(GridMover mover, Tile destination, AbstractAttackCard attack)
     {
         var ctx = new CardContext { User = executor, TargetTile = destination };
         bool valid = attack.IsValidTarget(ctx);
@@ -162,33 +187,21 @@ public class PathPreview : MonoBehaviour
     {
         var ctx = new CardContext { User = executor, TargetTile = destination };
         bool valid = aoe.IsValidTarget(ctx);
-
-        // Linea dall'esecutore al centro dell'area, colorata per validità.
         DrawLine(mover.CurrentTile, destination, valid ? areaColor : unreachableColor);
-
-        // Il rendering dei tile dell'area è delegato a un futuro AreaPreviewController
-        // opzionale (evita di accoppiare PathPreview alla logica interna di AoeDamageCard,
-        // che espone `rows`/`columns` come private).
     }
 
     void ShowSelfDestruct(GridMover mover, SelfDestructCard self)
     {
-        // Il target è l'esecutore stesso: nessun hover da seguire.
-        // Per ora nessuna preview geometrica — la carta non ha un target selezionabile.
         line.positionCount = 0;
     }
 
     void ShowTileTarget(Tile tile)
     {
-        // TileOnly: nessuna linea dall'esecutore (non esiste).
-        // L'evidenziazione della tile è delegata a Tile.Highlight.
         line.positionCount = 0;
     }
 
     void ShowUnitTarget(Unit unit)
     {
-        // UnitOnly: evidenzia l'unità target. Per ora nessuna linea:
-        // l'evidenziazione visiva è delegata a UnitSelectorUI / un futuro marker.
         line.positionCount = 0;
     }
 
@@ -220,10 +233,4 @@ public class PathPreview : MonoBehaviour
     }
 
     Vector3 ToLinePoint(Vector3 p) => new Vector3(p.x, p.y + heightOffset, p.z);
-
-    public void ClearTargetUnit()
-    {
-        forcedTarget = null;
-        Hide();
-    }
 }

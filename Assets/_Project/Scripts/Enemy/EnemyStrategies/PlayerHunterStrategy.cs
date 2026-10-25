@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Enemy AI/Player Hunter", fileName = "AI_PlayerHunter")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Enemy/AIType/Player Hunter", fileName = "AI_PlayerHunter")]
 public class PlayerHunterStrategy : EnemyStrategy
 {
     [Tooltip("Bonus quando può colpire il player (rende l'attacco prioritario al movimento).")]

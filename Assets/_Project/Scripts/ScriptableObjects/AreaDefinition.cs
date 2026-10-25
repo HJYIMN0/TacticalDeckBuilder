@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Tiles/Area", fileName = "Area_")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Tiles/Area", fileName = "Area_")]
 public class AreaDefinition : ScriptableObject
 {
     public string areaName;

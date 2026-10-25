@@ -138,9 +138,33 @@ public class TileHighlightController : MonoBehaviour
         if (hovered == null || origin == null || activeProfile == null) return;
         if (hovered == origin) return;
 
-        if (!TileManager.Instance.TryGetPath(origin, hovered, activeRange, out List<Tile> path)) return;
+        Unit activeUnit = activeMover.GetComponent<Unit>();
+        bool isJump = activeUnit != null && activeUnit.HasAbility<JumpAbility>();
+        Debug.Log($"[THC] unit={activeUnit?.name} isJump={isJump} " +
+          $"abilities={(activeUnit != null ? activeUnit.Abilities.Count : -1)}");
+        if (isJump)
+        {
+            // Salto: linea retta, ignora ostacoli e occupanti intermedi.
+            // L'unico vincolo è che il target non sia un ostacolo/occupato,
+            // ma quello lo valida MovementCard.IsValidTarget, non l'anteprima.
+            var line = TileManager.Instance.GetLineTiles(origin, hovered);
+            if (line.Count < 2) return;
 
-        // path[0] è la tile di partenza: la salto. Le intermedie = percorso, l'ultima = selezionata.
+            int range = activeRange;
+            int dist = TileManager.Instance.GetDistance(origin, hovered);
+            if (dist > range) return;
+
+            for (int i = 1; i < line.Count - 1; i++)
+                ShowOn(line[i], false);
+
+            ShowOn(line[line.Count - 1], true);
+            return;
+        }
+
+        // Comportamento standard
+        if (!TileManager.Instance.TryGetPath(origin, hovered, activeRange, out List<Tile> path))
+            return;
+
         for (int i = 1; i < path.Count - 1; i++)
             ShowOn(path[i], false);
 

@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Cards/Tile Transform", fileName = "TileTransform_")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Cards/Tile Transform", fileName = "TileTransform_")]
 public class TileTransformCard : CardData
 {
     [SerializeField] GameObject newTilePrefab;

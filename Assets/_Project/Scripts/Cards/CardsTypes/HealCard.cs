@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Cards/Heal", fileName = "Heal_")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Cards/Heal", fileName = "Heal_")]
 public class HealCard : CardData
 {
     [SerializeField] int healAmount = 3;

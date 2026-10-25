@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Cards/Self Destruct", fileName = "SelfDestruct_")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Cards/Self Destruct", fileName = "SelfDestruct_")]
 public class SelfDestructCard : CardData
 {
     [SerializeField] int damage = 4;

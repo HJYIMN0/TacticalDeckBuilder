@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Enemy AI/Objective Conqueror", fileName = "AI_Objective")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Enemy/AIType/Objective Conqueror", fileName = "AI_Objective")]
 public class ObjectiveConquerorStrategy : EnemyStrategy
 {
     [Tooltip("Bonus per attacco su objective (le carte attacco colpiscono anche DestructibleTile).")]

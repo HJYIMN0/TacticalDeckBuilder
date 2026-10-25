@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Enemy AI/Kamikaze", fileName = "AI_Kamikaze")]
+[CreateAssetMenu(menuName = "ScriptableObjects/Enemy/AIType/Kamikaze", fileName = "AI_Kamikaze")]
 public class KamikazeStrategy : EnemyStrategy
 {
     public override bool TryChooseNext(

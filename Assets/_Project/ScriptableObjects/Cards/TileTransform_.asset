@@ -15,7 +15,8 @@ MonoBehaviour:
   cardName: Carta trasformante
   cost: 1
   artwork: {fileID: 0}
+  description: Distrugge una tile
   isUnique: 0
-  targeting: 0
-  newTilePrefab: {fileID: 0}
-  moveOccupantToNewTile: 1
+  targeting: 2
+  newTilePrefab: {fileID: 3666824644798689164, guid: 2d606d28c17b39440a9425148c64375d, type: 3}
+  moveOccupantToNewTile: 0

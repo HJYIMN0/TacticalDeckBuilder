@@ -10,11 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ca3dd467b72f9804aba94070067baf87, type: 3}
-  m_Name: MovementCard00
+  m_Name: Passo
   m_EditorClassIdentifier: Assembly-CSharp::MovementCard
-  cardName: Carta movimento
+  cardName: Passo
   cost: 1
   artwork: {fileID: 0}
+  description: 'Muoviti di 3 tiles '
+  isUnique: 0
+  targeting: 0
   maxDistance: 3
   walkableLayerMask:
     serializedVersion: 2

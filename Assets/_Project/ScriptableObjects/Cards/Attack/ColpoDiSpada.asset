@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f69db0b5e4a29a94da4ff1d0d04265bb, type: 3}
-  m_Name: AttackCard00
+  m_Name: ColpoDiSpada
   m_EditorClassIdentifier: Assembly-CSharp::AttackCard
-  cardName: Carta attacco
+  cardName: Colpo di spada
   cost: 1
   artwork: {fileID: 0}
-  description: 
+  description: 3 Danni a un target adiacente!
   isUnique: 0
   targeting: 0
   maxDistance: 1

@@ -4,7 +4,8 @@
 public class AttackCard : AbstractAttackCard
 {
 
-    public override string Description => "Attack an unit at a maximum distance of " + maxDistance + " tiles";
+    public override string Description => string.IsNullOrEmpty(description) ? 
+        $"Attack an unit at a maximum distance of {maxDistance} tiles for {damage} damage" : description;
     protected override int GetAttackCount(CardContext ctx)
     {
         var da = ctx.User.GetAbility<DoubleAttackAbility>();

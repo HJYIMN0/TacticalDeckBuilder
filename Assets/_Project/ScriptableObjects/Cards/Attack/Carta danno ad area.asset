@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea08ad3db795c094ea82961f845b834d, type: 3}
   m_Name: Carta danno ad area
   m_EditorClassIdentifier: Assembly-CSharp::AoeDamageCard
-  cardName: Danno ad area
-  cost: 1
+  cardName: Esplosione
+  cost: 3
   artwork: {fileID: 0}
+  description: 2 Danni in un area a 5 tiles di distanza
   isUnique: 0
   targeting: 0
   damage: 2

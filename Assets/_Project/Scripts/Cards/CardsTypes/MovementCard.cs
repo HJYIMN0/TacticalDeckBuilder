@@ -7,7 +7,7 @@ public class MovementCard : CardData
     public int maxDistance = 3;
     public LayerMask walkableLayerMask;
 
-    public override string Description => "move up to " + maxDistance + " tiles";
+    public override string Description => string.IsNullOrEmpty(description) ? "move up to " + maxDistance + " tiles" : description;
 
     public override bool IsValidTarget(CardContext ctx)
     {

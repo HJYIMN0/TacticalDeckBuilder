@@ -17,9 +17,6 @@ public class Unit : MonoBehaviour
     [SerializeField] DeckData startingDeck;
     [SerializeField] int drawPerTurn = 3;
 
-    [Header("Abilità (fallback se definition == null)")]
-    [SerializeField] UnitAbility ability;
-
     public event Action<Unit, List<CardData>> OnCardsDrawn;
 
     GridMover mover;
@@ -54,7 +51,7 @@ public class Unit : MonoBehaviour
         }
         else
         {
-            if (ability != null) abilities.Add(ability);
+            Debug.LogWarning($"[Unit] {name}: manca UnitDefinition!");
         }
 
         // Deck locale: serve ai nemici. Per i Player è un fallback vuoto

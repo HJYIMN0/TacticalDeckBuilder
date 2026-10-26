@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,7 +13,7 @@ public class TurnManager : GenericSingleton<TurnManager>
 
     readonly List<Unit> units = new List<Unit>();
     public IReadOnlyList<Unit> Units => units;
-    readonly HashSet<Tile> plannedTiles = new HashSet<Tile>();     // registro prenotazioni, posseduto da TurnManager (non singleton a sé)
+    readonly HashSet<Tile> plannedTiles = new HashSet<Tile>();
     public ISet<Tile> PlannedTiles => plannedTiles;
     bool running;
     int round;
@@ -34,8 +35,8 @@ public class TurnManager : GenericSingleton<TurnManager>
         units.AddRange(found);
         units.Sort((a, b) => b.Initiative.CompareTo(a.Initiative));
 
-        // leggere Tile forza l'init del GridMover (e quindi Tile.SetOccupant) di TUTTE le unità
-        // prima di pianificare: senza, chi pianifica per primo vede libere le tile degli altri nemici
+        // Leggere Tile forza l'inizializzazione del GridMover
+        // e di Tile.SetOccupant per tutte le unità prima di pianificare.
         foreach (var u in units)
             _ = u.Tile;
 
@@ -64,17 +65,23 @@ public class TurnManager : GenericSingleton<TurnManager>
 
     public void Register(Unit u)
     {
-        if (!units.Contains(u)) { units.Add(u); Debug.Log($"[TurnManager] Registrata {u.name}"); }
+        if (!units.Contains(u))
+        {
+            units.Add(u);
+            Debug.Log($"[TurnManager] Registrata {u.name}");
+        }
     }
 
     public void Unregister(Unit u)
     {
-        if (units.Remove(u)) Debug.Log($"[TurnManager] Deregistrata {u.name}");
+        if (units.Remove(u))
+            Debug.Log($"[TurnManager] Deregistrata {u.name}");
     }
 
     IEnumerator TurnLoop()
     {
         running = true;
+
         while (true)
         {
             round++;
@@ -87,7 +94,7 @@ public class TurnManager : GenericSingleton<TurnManager>
                 if (u == null) continue;
                 if (!u.IsAlive) continue;
 
-                // La fazione va gestita PRIMA del check Controller:
+                // La fazione va gestita prima del check Controller:
                 // il Player non ha Controller sull'Unit (ce l'ha su PlayerManager).
                 if (!handledFactions.Add(u.Faction)) continue;
 
@@ -95,13 +102,16 @@ public class TurnManager : GenericSingleton<TurnManager>
 
                 var factionUnits = new List<Unit>();
                 foreach (var x in units)
+                {
                     if (x != null && x.IsAlive && x.Faction == u.Faction)
                         factionUnits.Add(x);
+                }
 
                 // ---- PLAYER: un turno di fazione ----
                 if (u.Faction == Faction.Player)
                 {
                     var pc = FindAnyObjectByType<PlayerController>();
+
                     if (pc == null)
                     {
                         Debug.LogError("[TurnManager] Nessun PlayerController in scena");
@@ -114,12 +124,26 @@ public class TurnManager : GenericSingleton<TurnManager>
                     continue;
                 }
 
-                // ---- ENEMY: un turno per unità (invariato) ----
+                // ---- ENEMY: un turno per unità ----
                 foreach (var fu in factionUnits)
                 {
                     if (fu == null || !fu.IsAlive) continue;
+
                     fu.Health.OnTurnStart();
                     yield return fu.RunTurnStartAbilities();
+
+                    // MODIFICA: prima il turno nemico terminava qui.
+                    // Ora il controller esegue le intenzioni dichiarate.
+                    if (fu.Controller == null)
+                    {
+                        Debug.LogWarning(
+                            $"[TurnManager] {fu.name} non ha un controller: turno saltato.");
+                        continue;
+                    }
+
+                    Debug.Log($"[TurnManager] >>> Turno di {fu.name} ({fu.Faction})");
+                    yield return fu.Controller.TakeTurn(fu);
+                    Debug.Log($"[TurnManager] <<< Fine turno di {fu.name}");
                 }
             }
 

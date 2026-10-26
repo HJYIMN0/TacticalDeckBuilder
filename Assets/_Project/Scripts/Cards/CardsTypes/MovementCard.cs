@@ -33,11 +33,21 @@ public class MovementCard : CardData
     }
     public override IEnumerator Play(CardContext ctx)
     {
-        if (!TrySpendCost(ctx)) yield break;
+        Debug.Log($"[MovementCard] Play chiamato | User={ctx.User?.name} | Target={ctx.TargetTile?.Coord}");
+
+        if (!TrySpendCost(ctx))
+        {
+            Debug.LogWarning("[MovementCard] TrySpendCost fallito");
+            yield break;
+        }
+
+        Debug.Log("[MovementCard] Costo pagato, avvio movimento");
 
         if (ctx.User.HasAbility<JumpAbility>())
             yield return ctx.User.Mover.JumpTo(ctx.TargetTile);
         else
             yield return ctx.User.Mover.TryMoveAtTiles(ctx.TargetTile, maxDistance);
+
+        Debug.Log($"[MovementCard] Movimento terminato | Tile attuale={ctx.User.Tile?.Coord}");
     }
 }

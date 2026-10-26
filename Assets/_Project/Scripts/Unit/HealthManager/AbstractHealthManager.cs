@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Events;
 
 public abstract class AbstractHealthManager : MonoBehaviour
 {
@@ -18,11 +19,16 @@ public abstract class AbstractHealthManager : MonoBehaviour
     public bool IsAlive => current > 0;
 
     public event Action<AbstractHealthManager, Unit> OnDied;
+    public UnityEvent<int, int> OnHealthChanged;
 
     void Awake()
     {
         current = maxHp;
         currentShield = maxShield;
+    }
+    public virtual void Start()
+    {
+        OnHealthChanged?.Invoke(current, maxHp);
     }
 
     public void Configure(int hp, int shield, bool renewable)
@@ -63,6 +69,7 @@ public abstract class AbstractHealthManager : MonoBehaviour
 
         current = Mathf.Max(0, current - amount);
         Debug.Log($"[Health] {name} subisce {amount} -> {current}/{maxHp}");
+        OnHealthChanged?.Invoke(current, maxHp);
 
         if (current <= 0)
         {

@@ -52,6 +52,7 @@ public class EnemyAiController : AbstractUnitController
         Debug.Log($"[Enemy] Pre-dichiarate {pendingIntents.Count} intenzioni iniziali");
     }
 
+
     public override IEnumerator TakeTurn(Unit unit)
     {
         Debug.Log($"[Enemy] === Turno di {unit.name} | pending={pendingIntents.Count} ===");
@@ -65,21 +66,22 @@ public class EnemyAiController : AbstractUnitController
             yield break;
         }
 
-        unit.Deck.Draw(unit.DrawPerTurn);
-
+        // [MODIFICA] Non pescare qui: prima si risolvono le intenzioni
+        // dichiarate in precedenza, senza anticipare il turno successivo.
         bool hadPending = pendingIntents.Count > 0;
 
-        // FASE ESECUZIONE
+        // FASE ESECUZIONE: gli effetti si risolvono nel turno effettivo.
         if (hadPending)
         {
             Debug.Log($"[Enemy] Eseguo {pendingIntents.Count} intenzioni dichiarate");
+
             while (pendingIntents.Count > 0)
             {
                 EnemyIntent intent = pendingIntents.Dequeue();
 
                 if (TryBuildContext(unit, intent, out CardContext ctx))
                 {
-                    Debug.Log($"[Enemy] Eseguo {intent.card.cardName} -> {ctx.TargetTile.Coord}"); // [MODIFICA] tile effettiva (può differire dall'intent)
+                    Debug.Log($"[Enemy] Eseguo {intent.card.cardName} -> {ctx.TargetTile.Coord}");
                     yield return intent.card.Play(ctx);
                     yield return new WaitForSeconds(playDelay);
                 }
@@ -88,17 +90,26 @@ public class EnemyAiController : AbstractUnitController
             }
         }
 
-        // FASE DICHIARAZIONE
+        // FASE DICHIARAZIONE: prepara le carte del turno successivo.
         bool declareNow = !hadPending || shouldDeclareAgain;
+
         if (declareNow)
         {
             Debug.Log("[Enemy] Dichiaro nuove intenzioni");
             yield return new WaitForSeconds(thinkDelay);
-            DeclareIntentions(unit, player);
-        }
 
-        unit.Deck.DiscardHand();
+            // [MODIFICA] La nuova mano viene pescata soltanto dopo
+            // la risoluzione delle intenzioni del turno corrente.
+            unit.Deck.Draw(unit.DrawPerTurn);
+
+            DeclareIntentions(unit, player);
+
+            // Le intenzioni mantengono i riferimenti alle carte dichiarate.
+            // Scartare la mano non esegue gli effetti delle carte.
+            unit.Deck.DiscardHand();
+        }
     }
+
 
     void DeclareIntentions(Unit unit, Unit player)
     {

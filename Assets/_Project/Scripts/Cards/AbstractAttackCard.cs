@@ -27,7 +27,11 @@ public abstract class AbstractAttackCard : CardData
 
     protected override bool TrySpendCost(CardContext ctx)
     {
+        if (ctx.User != null && ctx.User.Faction == Faction.Enemy)
+            return IsValidTarget(ctx);
+
         if (!CanPlay(ctx)) return false;
+
         return ctx.Energy.Spend(cost + GetExtraCost(ctx.User));
     }
 

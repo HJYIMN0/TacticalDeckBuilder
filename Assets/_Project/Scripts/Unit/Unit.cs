@@ -15,7 +15,6 @@ public class Unit : MonoBehaviour
 
     [Header("Deck locale (SOLO per i nemici; i Player usano PlayerFaction.Deck)")]
     [SerializeField] DeckData startingDeck;
-    [SerializeField] int drawPerTurn = 3;
 
     public event Action<Unit, List<CardData>> OnCardsDrawn;
 
@@ -27,7 +26,6 @@ public class Unit : MonoBehaviour
 
     public Faction Faction => definition != null ? definition.faction : faction;
     public int Initiative => definition != null ? definition.initiative : initiative;
-    public int DrawPerTurn => drawPerTurn;
     public GridMover Mover => mover;
     public AbstractHealthManager Health => health;
     public AbstractUnitController Controller => controller;
@@ -36,6 +34,21 @@ public class Unit : MonoBehaviour
 
     public bool IsAlive => health == null || health.IsAlive;
     public Tile Tile => mover != null ? mover.CurrentTile : null;
+    UnitFeedback feedback;
+
+    public UnitDefinition Definition => definition;
+    public float MoveSpeed => definition != null ? definition.moveSpeed : 4f;
+    public float StepDelay => definition != null ? definition.stepDelay : 0.08f;
+    public float HopHeight => definition != null ? definition.hopHeight : 0.15f;
+
+    public UnitFeedback Feedback
+    {
+        get
+        {
+            if (feedback == null) TryGetComponent(out feedback);
+            return feedback;
+        }
+    }
 
     void Awake()
     {

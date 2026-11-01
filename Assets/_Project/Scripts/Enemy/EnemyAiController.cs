@@ -9,6 +9,7 @@ public class EnemyAiController : AbstractUnitController
     [SerializeField] float playDelay = 0.3f;
     [SerializeField] bool shouldDeclareAgain = true;
 
+
     [Header("Comportamento")]
     [Tooltip("Strategy che decide la pianificazione. Se null, l'enemy non fa nulla.")]
     [SerializeField] EnemyStrategy strategy;
@@ -45,7 +46,7 @@ public class EnemyAiController : AbstractUnitController
         Debug.Log($"[EnemyAiController] {name} unit.Tile={(unit.Tile != null ? unit.Tile.Coord.ToString() : "NULL")} | " +
                   $"player={player.name} player.Tile={(player.Tile != null ? player.Tile.Coord.ToString() : "NULL")}");
 
-        unit.Deck.Draw(unit.DrawPerTurn);
+        unit.Deck.Draw(strategy.DrawPerTurn);
         DeclareIntentions(unit, player);
         unit.Deck.DiscardHand();
 
@@ -100,7 +101,7 @@ public class EnemyAiController : AbstractUnitController
 
             // [MODIFICA] La nuova mano viene pescata soltanto dopo
             // la risoluzione delle intenzioni del turno corrente.
-            unit.Deck.Draw(unit.DrawPerTurn);
+            unit.Deck.Draw(strategy.DrawPerTurn);
 
             DeclareIntentions(unit, player);
 

@@ -18,3 +18,6 @@ MonoBehaviour:
   maxShield: 0
   isShieldRenewable: 0
   abilities: []
+  moveSpeed: 16
+  stepDelay: 0.08
+  hopHeight: 0.15

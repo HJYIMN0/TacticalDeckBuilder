@@ -6,10 +6,15 @@ using System;
 
 public class HandView : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] RectTransform handRoot;
     [SerializeField] CardView cardPrefab;
-    [SerializeField] float cardSpacing = 200f;
+    [Header("Ventaglio")]
+    [SerializeField] float fanRadius = 1800f;     // raggio del pivot sotto la mano: più basso = arco più marcato
+    [SerializeField] float fanAngleStep = 5f;     // gradi tra due carte
+    [SerializeField] float maxFanAngle = 30f;     // apertura totale massima
     [SerializeField] float drawDuration = 0.4f;
+    [Header("Scarto")]
     [SerializeField] float discardDuration = 0.35f;
     [SerializeField] Vector2 discardOffset = new Vector2(0f, -600f);
     
@@ -25,6 +30,24 @@ public class HandView : MonoBehaviour
     public event Action<CardView> CardClicked;
     public IReadOnlyList<CardView> Views => views;
 
+    public CardView SpawnAt(CardData card, Vector2 startOffset)
+    {
+        CardView view = Instantiate(cardPrefab, handRoot);
+        view.OnClicked += HandleClicked;
+        views.Add(view);
+        view.Bind(card);
+
+        Relayout();
+
+        RectTransform rt = view.GetComponent<RectTransform>();
+        GetSlotPose(views.Count - 1, out Vector2 home, out float rot);
+        rt.anchoredPosition = home + startOffset;
+        rt.localRotation = Quaternion.Euler(0f, 0f, rot);
+        rt.localScale = Vector3.one * 0.6f;
+        view.SetHome(home, rot);
+        return view;
+    }
+
     public IEnumerator AnimateAllToHome()
     {
         int count = views.Count;
@@ -33,15 +56,18 @@ public class HandView : MonoBehaviour
             if (i >= views.Count) break;
 
             CardView v = views[i];
-            if (v == null) continue;               
+            if (v == null) continue;
+
+            GetSlotPose(i, out Vector2 home, out float rot);
+            v.SetHome(home, rot);
 
             RectTransform rt = v.Rect;
-            Vector2 home = GetSlotPosition(i);
-            v.SetHome(home);
-            rt.DOAnchorPos(home, drawDuration).SetEase(Ease.OutBack);
-            rt.DOScale(1f, drawDuration).SetEase(Ease.OutBack);
+            float delay = i * stagger;
+            rt.DOAnchorPos(home, drawDuration).SetEase(Ease.OutBack).SetDelay(delay);
+            rt.DOScale(1f, drawDuration).SetEase(Ease.OutBack).SetDelay(delay);
+            rt.DOLocalRotateQuaternion(Quaternion.Euler(0f, 0f, rot), drawDuration).SetEase(Ease.OutBack).SetDelay(delay);
         }
-        yield return new WaitForSeconds(drawDuration);
+        yield return new WaitForSeconds(drawDuration + count * stagger);
     }
 
     public IEnumerator AnimateDiscard(CardView view)
@@ -149,6 +175,7 @@ public class HandView : MonoBehaviour
             if (v == null) continue;
             v.KillTweens();
             v.Rect.anchoredPosition = v.HomePosition;
+            v.Rect.localRotation = Quaternion.Euler(0f, 0f, v.HomeRotation);
             v.Rect.localScale = Vector3.one;
         }
     }
@@ -157,17 +184,27 @@ public class HandView : MonoBehaviour
         for (int i = 0; i < views.Count; i++)
         {
             if (views[i] == null) continue;
-            views[i].SetHome(GetSlotPosition(i));
+            GetSlotPose(i, out Vector2 home, out float rot);
+            views[i].SetHome(home, rot);
         }
     }
 
-    Vector2 GetSlotPosition(int index)
+    void GetSlotPose(int index, out Vector2 pos, out float rotZ)
     {
         int count = views.Count;
-        if (count <= 1) return Vector2.zero;
-        float total = (count - 1) * cardSpacing;
-        float x = -total / 2f + index * cardSpacing;
-        return new Vector2(x, 0f);
+        if (count <= 1)
+        {
+            pos = Vector2.zero;
+            rotZ = 0f;
+            return;
+        }
+
+        float step = Mathf.Min(fanAngleStep, maxFanAngle / (count - 1));
+        float angle = ((count - 1) * 0.5f - index) * step;   // carta a sinistra = angolo positivo (CCW)
+        float rad = angle * Mathf.Deg2Rad;
+
+        pos = new Vector2(-fanRadius * Mathf.Sin(rad), fanRadius * (Mathf.Cos(rad) - 1f));
+        rotZ = angle;
     }
 
     void HandleClicked(CardView view) => CardClicked?.Invoke(view);
@@ -193,24 +230,6 @@ public class HandView : MonoBehaviour
         }
 
         gameObject.SetActive(false);
-    }
-    public CardView SpawnAt(CardData card, Vector2 startOffset)
-    {
-        CardView view = Instantiate(cardPrefab, handRoot);
-        view.OnClicked += HandleClicked;
-        views.Add(view);
-        view.Bind(card);
-
-        // [MODIFICA] ricalcola le home di TUTTE le carte con il conteggio aggiornato.
-        // Prima ogni carta aveva la home calcolata col conteggio parziale (0, +100, +200...).
-        Relayout();
-
-        RectTransform rt = view.GetComponent<RectTransform>();
-        Vector2 home = GetSlotPosition(views.Count - 1);
-        rt.anchoredPosition = home + startOffset;
-        rt.localScale = Vector3.one * 0.6f;
-        view.SetHome(home);
-        return view;
     }
 
 }

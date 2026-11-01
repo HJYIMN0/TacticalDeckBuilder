@@ -3,6 +3,8 @@ using UnityEngine;
 
 public abstract class EnemyStrategy : ScriptableObject
 {
+    public int DrawPerTurn = 3;
+
     /// <summary>
     /// Sceglie la prossima azione data la mano simulata e la posizione simulata.
     /// Ritorna false se non c'è nulla di sensato da fare.

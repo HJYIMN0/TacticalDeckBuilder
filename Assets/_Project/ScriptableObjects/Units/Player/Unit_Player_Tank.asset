@@ -19,3 +19,6 @@ MonoBehaviour:
   isShieldRenewable: 0
   abilities:
   - {fileID: 11400000, guid: 6d237556798e93b4297ec1d143281ab9, type: 2}
+  moveSpeed: 12
+  stepDelay: 0.1
+  hopHeight: 0.15

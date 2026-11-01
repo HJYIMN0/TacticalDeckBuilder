@@ -10,6 +10,12 @@ public class TileHighlight : MonoBehaviour
 
     MaterialPropertyBlock block;
 
+    // Stato "base" (selected / path) e overlay hover
+    bool baseVisible;
+    Color baseColor;
+    float baseIntensity;
+    bool hoverVisible;
+
     void Awake()
     {
         block = new MaterialPropertyBlock();
@@ -28,21 +34,47 @@ public class TileHighlight : MonoBehaviour
     public void ShowSelected(TileHighlightProfile profile)
     {
         if (profile == null) return;
-        Show(profile.selectedColor, profile.selectedIntensity);
+        SetBase(profile.selectedColor, profile.selectedIntensity);
     }
 
     public void ShowPath(TileHighlightProfile profile)
     {
         if (profile == null) return;
-        Show(profile.pathColor, profile.pathIntensity);
+        SetBase(profile.pathColor, profile.pathIntensity);
     }
 
     public void Hide()
     {
-        if (edgeRenderer != null) edgeRenderer.enabled = false;
+        baseVisible = false;
+        if (!hoverVisible && edgeRenderer != null) edgeRenderer.enabled = false;
     }
 
-    void Show(Color color, float intensity)
+    public void ShowHover(TileHoverKind kind, TileHighlightProfile profile)
+    {
+        if (profile == null || kind == TileHoverKind.None) return;
+        HoverStyle style = profile.GetHover(kind);
+        hoverVisible = true;
+        Apply(style.color, style.intensity);
+    }
+
+    public void ClearHover()
+    {
+        if (!hoverVisible) return;
+        hoverVisible = false;
+
+        if (baseVisible) Apply(baseColor, baseIntensity);
+        else if (edgeRenderer != null) edgeRenderer.enabled = false;
+    }
+
+    void SetBase(Color color, float intensity)
+    {
+        baseVisible = true;
+        baseColor = color;
+        baseIntensity = intensity;
+        if (!hoverVisible) Apply(color, intensity);
+    }
+
+    void Apply(Color color, float intensity)
     {
         if (edgeRenderer == null) return;
 

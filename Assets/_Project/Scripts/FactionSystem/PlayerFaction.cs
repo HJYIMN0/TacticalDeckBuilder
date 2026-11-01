@@ -1,30 +1,29 @@
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
-/// Stato di fazione Player: deck condiviso, draw/turn, energia condivisa.
-/// Vive su un GameObject scena dedicato ("PlayerFaction"). Nessun singleton.
+/// Stato di fazione Player: deck condiviso e draw/turn.
+/// L'energia vive in PlayerEnergyController. Nessun singleton.
 /// </summary>
 public class PlayerFaction : MonoBehaviour
 {
     [SerializeField] DeckData startingDeck;
     [SerializeField, Min(1)] int drawPerTurn = 3;
-    [SerializeField, Min(1)] int energyPerTurn = 3;
-    [SerializeField, Min(1)] int energyHardCap = 99;
+    [SerializeField] PlayerEnergyController energyController;
 
     Deck deck;
-    FactionEnergyPool energy;
 
     public Deck Deck => deck;
     public int DrawPerTurn => drawPerTurn;
-    public IEnergyPool Energy => energy;
+    public IEnergyPool Energy => energyController.Pool;
 
     void Awake()
     {
         deck = startingDeck != null
             ? new Deck(startingDeck.cards)
             : new Deck(new CardData[0]);
-        energy = new FactionEnergyPool(energyPerTurn, energyHardCap);
+
+        if (energyController == null) energyController = GetComponent<PlayerEnergyController>();
+        if (energyController == null)
+            Debug.LogError("[PlayerFaction] PlayerEnergyController mancante sullo stesso GameObject", this);
     }
 }

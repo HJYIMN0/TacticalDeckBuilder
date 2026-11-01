@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +8,7 @@ public class GridMover : MonoBehaviour
     [SerializeField] float stepDuration = 0.2f;
     [SerializeField] LayerMask tileMask;
     [SerializeField][Min(0.1f)] float maxDistanceFromStartTile = 10.5f;
+    [SerializeField] bool faceMovementDirection = true;
 
     float groundOffset; // quanto il pivot dell'unità sta sopra la superficie della tile (misurato dal raycast)
 
@@ -88,6 +90,11 @@ public class GridMover : MonoBehaviour
         Unit unit = GetComponent<Unit>();
         Tile origin = currentTile;
 
+        // 1 allocazione per movimento, non per frame
+        WaitForSeconds stepWait = unit != null && unit.StepDelay > 0f
+            ? new WaitForSeconds(unit.StepDelay)
+            : null;
+
         for (int i = 1; i < path.Count; i++)
         {
             Tile next = path[i];
@@ -100,8 +107,11 @@ public class GridMover : MonoBehaviour
 
             currentTile.SetOccupant(null);
             next.SetOccupant(unit);
-            yield return StepTo(next);
+            yield return StepTo(next, unit);
             currentTile = next;
+
+            if (stepWait != null && i < path.Count - 1)
+                yield return stepWait;
         }
 
         isMoving = false;
@@ -131,17 +141,29 @@ public class GridMover : MonoBehaviour
         isMoving = false;
     }
 
-    IEnumerator StepTo(Tile tile)
+    IEnumerator StepTo(Tile tile, Unit unit)
     {
         Vector3 start = transform.position;
-        Vector3 end = GetStandPosition(tile); // anche la Y arriva dalla tile
+        Vector3 end = GetStandPosition(tile);   // anche la Y arriva dalla tile
 
-        for (float t = 0f; t < 1f; t += Time.deltaTime / stepDuration)
-        {
-            transform.position = Vector3.Lerp(start, end, t);
-            yield return null;
-        }
+        float speed = unit != null ? Mathf.Max(0.01f, unit.MoveSpeed) : 4f;
+        float hop = unit != null ? unit.HopHeight : 0f;
+        float duration = Vector3.Distance(start, end) / speed;
+
+        Vector3 dir = end - start;
+        dir.y = 0f;
+        if (faceMovementDirection && dir.sqrMagnitude > 0.0001f)
+            transform.DORotateQuaternion(Quaternion.LookRotation(dir), Mathf.Min(0.12f, duration)).SetLink(gameObject);
+
+        Tween step = hop > 0f
+            ? transform.DOJump(end, hop, 1, duration)
+            : transform.DOMove(end, duration);
+        step.SetEase(Ease.Linear).SetLink(gameObject);
+
+        yield return step.WaitForCompletion();
         transform.position = end;
+
+        if (unit != null && unit.Feedback != null) unit.Feedback.PlayLand();
     }
 
     /// <summary>
@@ -274,6 +296,4 @@ public class GridMover : MonoBehaviour
             AreaManager.Instance.RecountAreasTouching(currentTile);
         }
     }
-
-
 }

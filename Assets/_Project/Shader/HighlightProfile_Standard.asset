@@ -10,9 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e35248691f1b5b340a98b06c5135a673, type: 3}
-  m_Name: HighlightProfile_Movment
+  m_Name: HighlightProfile_Standard
   m_EditorClassIdentifier: Assembly-CSharp::TileHighlightProfile
   selectedColor: {r: 0, g: 1, b: 1, a: 1}
   selectedIntensity: 3
   pathColor: {r: 0, g: 0, b: 1, a: 1}
   pathIntensity: 1.5
+  hoverPlayerUnit:
+    color: {r: 0, g: 1, b: 0, a: 1}
+    intensity: 2.5
+  hoverEmptyTile:
+    color: {r: 1, g: 0.9780848, b: 0.53396225, a: 1}
+    intensity: 1.5
+  hoverEnemyUnit:
+    color: {r: 1, g: 0.55, b: 0, a: 1}
+    intensity: 2.5
+  hoverEnemyAttackTarget:
+    color: {r: 1, g: 0, b: 0, a: 1}
+    intensity: 4
+  hoverDestructible:
+    color: {r: 0, g: 1, b: 0.111495376, a: 1}
+    intensity: 2.5

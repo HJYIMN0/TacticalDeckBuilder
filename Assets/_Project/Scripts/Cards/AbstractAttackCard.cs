@@ -44,15 +44,26 @@ public abstract class AbstractAttackCard : CardData
         if (!TrySpendCost(ctx)) yield break;
 
         int attacks = GetAttackCount(ctx);
+        UnitFeedback attackerFx = ctx.User.Feedback;
+
         for (int i = 0; i < attacks; i++)
         {
             if (ctx.TargetTile == null) break;
             Unit target = ResolveTarget(ctx);
             if (target == null || !target.IsAlive) break;
 
+            // Anticipazione + affondo: riprende all'istante dell'impatto
+            if (attackerFx != null)
+                yield return attackerFx.PlayAttack(target.transform.position);
+
             Debug.Log($"[Attack] {ctx.User.name} -> {target.name} per {damage} danni (colpo {i + 1}/{attacks})");
+
+            UnitFeedback targetFx = target.Feedback;
+            if (targetFx != null) targetFx.PlayHit(ctx.User.transform.position);   // prima del danno: se muore l'oggetto sparisce
             target.Health.TakeDamage(damage, ctx.User);
-            yield return null;
+
+            // Aspetta il rientro dell'attaccante prima del colpo successivo
+            yield return attackerFx != null ? attackerFx.WaitForIdle() : null;
         }
     }
 

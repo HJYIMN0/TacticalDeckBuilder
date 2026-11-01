@@ -313,6 +313,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4118157353067187909, guid: c938faf4719a0fd4793170eecdde298a, type: 3}
+      propertyPath: drawPerTurn
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4118157353067187909, guid: c938faf4719a0fd4793170eecdde298a, type: 3}
+      propertyPath: energyController
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 6393972393830501142, guid: c938faf4719a0fd4793170eecdde298a, type: 3}
       propertyPath: m_Name
       value: PlayerManager

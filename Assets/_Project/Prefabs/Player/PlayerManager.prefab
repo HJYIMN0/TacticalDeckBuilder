@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 5742919109600710677}
   - component: {fileID: 5367105999167676227}
   - component: {fileID: 53761966730323203}
+  - component: {fileID: 1970935046215695842}
   m_Layer: 0
   m_Name: PlayerManager
   m_TagString: Untagged
@@ -71,8 +72,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerFaction
   startingDeck: {fileID: 11400000, guid: c4bcaa793be1abf4fa59b28d55679f74, type: 2}
   drawPerTurn: 3
-  energyPerTurn: 3
-  energyHardCap: 99
+  energyController: {fileID: 1970935046215695842}
 --- !u!114 &6441779762003850304
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -235,3 +235,18 @@ MonoBehaviour:
   movementProfile: {fileID: 11400000, guid: 30e14e29d1a343744b0773ca74f3e2d3, type: 2}
   attackProfile: {fileID: 11400000, guid: 130f5c67e21a8ca47940ae5ca55acba8, type: 2}
   movementRange: 100
+  suspended: 0
+--- !u!114 &1970935046215695842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6393972393830501142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9aa78dbb7e0b3347a1190ed0299ad44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerEnergyController
+  energyPerTurn: 10
+  energyHardCap: 99
